@@ -147,7 +147,7 @@ def build_output_encoder_ring(p: ActuatorParams) -> bd.Part:
 def build_output_encoder_pcb(p: ActuatorParams) -> bd.Part:
     """20 tangential × 12 radial × 1.6 board at R40, Z108.7–110.3."""
     with BuildPart() as pcb:
-        with Locations((46.0, 0.0, 109.5)):
+        with Locations((46.0, 0.0, 108.8)):
             Box(12.0, 20.0, 1.6)
     part = pcb.part
     part.label = "Output_Encoder_PCB"

@@ -338,6 +338,7 @@ def check_output() -> None:
     dims = sorted([round(pbb.size.X, 6), round(pbb.size.Y, 6), round(pbb.size.Z, 6)])
     assert dims == [1.6, 12.0, 20.0], dims
     assert abs(pbb.min.X - 40.0) < 1e-6
+    assert pbb.min.Z >= 108.0 - 1e-6 and pbb.max.Z <= 111.0 + 1e-6
 
     cap = build_output_cap(p)
     assert cap.label == "Output_Cap_Mount_Flange"
