@@ -1,0 +1,147 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="theme-color" content="#f5f3ee" />
+    <title>HA-110 谐波关节模组 · 内部结构原理</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans+SC:wght@400;500;700&display=swap"
+      rel="stylesheet"
+    />
+  </head>
+  <body>
+    <div id="scene-container" aria-label="HA-110 三维模型"></div>
+
+    <header class="topbar">
+      <div class="brand">
+        <div class="brand-mark">HA-110</div>
+        <div class="brand-copy">
+          <strong>谐波关节模组</strong>
+          <span>Harmonic Joint Actuator · 一体化无框电机 + 谐波减速 + 双绝对值编码</span>
+        </div>
+      </div>
+      <div class="topbar-actions">
+        <button id="btn-diagram" class="btn btn-quiet" type="button">
+          <span class="btn-icon">▤</span> 结构图
+        </button>
+      </div>
+    </header>
+
+    <aside class="intro" aria-label="为什么这样设计">
+      <p class="eyebrow">WHY THIS DESIGN</p>
+      <h1>为什么这样设计</h1>
+      <ul class="pillars">
+        <li>
+          <span class="pillar-index">01</span>
+          <div><strong>空间</strong><span>电机、减速器、轴承、编码器同轴叠进 Ø110 机身，中间留出 Ø20 走线孔。</span></div>
+        </li>
+        <li>
+          <span class="pillar-index">02</span>
+          <div><strong>传动</strong><span>无框电机直驱波发生器，100/102 齿差 2 齿，50:1 低背隙、高刚性。</span></div>
+        </li>
+        <li>
+          <span class="pillar-index">03</span>
+          <div><strong>控制</strong><span>输入端与输出端双绝对值编码，交叉滚子轴承承担弯矩，上电即知关节位置。</span></div>
+        </li>
+      </ul>
+      <p class="fineprint">结构原理示意，最终参数以正式规格书为准。</p>
+    </aside>
+
+    <div id="hover-label" class="hover-label" aria-hidden="true">
+      <span id="hover-name"></span>
+    </div>
+
+    <aside id="part-card" class="part-card" aria-hidden="true" inert>
+      <button id="part-close" class="card-close" type="button" aria-label="关闭零件说明">×</button>
+      <p id="part-system" class="card-eyebrow">结构</p>
+      <h2 id="part-title">零件</h2>
+      <p id="part-what" class="card-what"></p>
+      <div id="part-why-wrap" class="card-block">
+        <p class="card-label">为什么这样设计</p>
+        <p id="part-why"></p>
+      </div>
+      <div id="part-hint-wrap" class="card-block">
+        <p class="card-label">一个反直觉点</p>
+        <p id="part-hint"></p>
+      </div>
+      <p id="part-order" class="card-order"></p>
+      <select id="part-select" class="sr-only" aria-label="选择零件">
+        <option value="">选择零件…</option>
+      </select>
+    </aside>
+
+    <footer class="console" aria-label="视图控制">
+      <div class="console-main">
+        <div class="explode-control">
+          <label for="explode">拆解</label>
+          <input id="explode" type="range" min="0" max="100" value="0" step="1" />
+          <output id="explode-value" for="explode">0%</output>
+        </div>
+        <div class="lens-buttons">
+          <button id="btn-cut" class="btn" type="button" aria-pressed="false">剖切</button>
+          <button id="btn-drive" class="btn" type="button" aria-pressed="false">传动</button>
+          <button id="btn-reset" class="btn btn-quiet" type="button">复位</button>
+        </div>
+      </div>
+      <div id="drive-controls" class="drive-controls" hidden>
+        <div class="drive-field">
+          <label for="input-rpm">输入转速</label>
+          <input id="input-rpm" type="range" min="0" max="3000" value="1000" step="10" />
+          <output id="input-rpm-value" for="input-rpm">1000 rpm</output>
+        </div>
+        <div class="drive-field">
+          <label for="ratio">减速比</label>
+          <input id="ratio" type="range" min="20" max="100" value="50" step="0.5" />
+          <output id="ratio-value" for="ratio">50:1</output>
+        </div>
+        <div class="drive-readout">
+          <span>输出</span>
+          <strong id="output-rpm">20.0 rpm</strong>
+          <em>演示慢放 ×1/20</em>
+        </div>
+      </div>
+    </footer>
+
+    <div id="loading" class="loading">
+      <div class="loading-inner">
+        <div class="loading-mark">HA-110</div>
+        <p>正在装载关节模组</p>
+        <div class="loading-track"><div id="loading-bar" class="loading-bar"></div></div>
+        <span id="loading-percent">0%</span>
+      </div>
+    </div>
+
+    <div id="error" class="error" hidden>
+      <h2>模型加载失败</h2>
+      <p id="error-message"></p>
+      <button class="btn" type="button" onclick="location.reload()">重试</button>
+    </div>
+
+    <div id="diagram-panel" class="diagram-panel" hidden>
+      <div class="diagram-shell">
+        <header class="diagram-head">
+          <div>
+            <p class="eyebrow">STRUCTURE · 50:1</p>
+            <h2>轴向剖面与齿部啮合</h2>
+          </div>
+          <button id="diagram-close" class="btn btn-quiet" type="button">关闭 ×</button>
+        </header>
+        <div class="diagram-body">
+          <img
+            id="diagram-static"
+            src="./assets/harmonic_actuator_section_teaching.svg"
+            alt="HA-110 轴向剖面结构图"
+          />
+          <div class="diagram-inset">
+            <canvas id="diagram-canvas"></canvas>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

@@ -9,3 +9,4 @@ models/harmonic_actuator_cutaway.*
 models/mesh_assembly.step
 models/mesh_cutaway.stl
 drawings/harmonic_actuator_cad_blueprint.png
+web/dist/
