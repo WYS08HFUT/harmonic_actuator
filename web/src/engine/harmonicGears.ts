@@ -256,12 +256,15 @@ function buildFlexspline(p: GearParams): THREE.Group {
   const group = new THREE.Group();
   group.name = 'Flexspline_Cup';
 
+  // One shared material so the vertex-shader deformation moves the whole cup.
+  const material = metalMaterial(GEAR_COLORS.flexspline, { flat: true });
+
   const teeth = toothedRing(
     externalToothProfile(p),
     p.fsInnerRadius,
     GEAR_STATIONS.fsTeeth[0],
     GEAR_STATIONS.fsTeeth[1],
-    metalMaterial(GEAR_COLORS.flexspline, { flat: true }),
+    material,
   );
   teeth.name = 'Flexspline_Teeth';
 
@@ -270,7 +273,7 @@ function buildFlexspline(p: GearParams): THREE.Group {
     p.fsInnerRadius - FS_WALL,
     GEAR_STATIONS.fsWall[0],
     GEAR_STATIONS.fsWall[1],
-    metalMaterial(GEAR_COLORS.flexspline),
+    material,
   );
   wall.name = 'Flexspline_Wall';
 
@@ -279,7 +282,7 @@ function buildFlexspline(p: GearParams): THREE.Group {
     FS_HUB_BORE_RADIUS,
     GEAR_STATIONS.fsDiaphragm[0],
     GEAR_STATIONS.fsDiaphragm[1],
-    metalMaterial(GEAR_COLORS.flexspline),
+    material,
   );
   diaphragm.name = 'Flexspline_Diaphragm';
 

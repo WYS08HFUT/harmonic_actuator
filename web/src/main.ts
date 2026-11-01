@@ -2,7 +2,10 @@ import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 import { PILLAR_META, TEACHING } from './data/teaching.ts';
+import { Drive, outputRpm } from './engine/drive.ts';
+import type { DriveGroups } from './engine/drive.ts';
 import { Exploder } from './engine/exploder.ts';
+import { makeFlexMaterial } from './engine/flexspline.ts';
 import {
   buildGearSet,
   disposeGearSet,
@@ -42,6 +45,10 @@ const hoverLabel = document.querySelector<HTMLDivElement>('#hover-label');
 const hoverName = document.querySelector<HTMLSpanElement>('#hover-name');
 const ratioInput = document.querySelector<HTMLInputElement>('#ratio');
 const ratioValue = document.querySelector<HTMLOutputElement>('#ratio-value');
+const driveControls = document.querySelector<HTMLDivElement>('#drive-controls');
+const inputRpmInput = document.querySelector<HTMLInputElement>('#input-rpm');
+const inputRpmValue = document.querySelector<HTMLOutputElement>('#input-rpm-value');
+const outputRpmText = document.querySelector<HTMLElement>('#output-rpm');
 
 if (
   !container ||
@@ -72,7 +79,11 @@ if (
   !hoverLabel ||
   !hoverName ||
   !ratioInput ||
-  !ratioValue
+  !ratioValue ||
+  !driveControls ||
+  !inputRpmInput ||
+  !inputRpmValue ||
+  !outputRpmText
 ) {
   throw new Error('Page shell is missing required elements');
 }
@@ -162,6 +173,10 @@ let autoFit = false;
 
 let gearSet: THREE.Group | null = null;
 let gearRatio = 50;
+let flexMaterial: THREE.MeshStandardMaterial | null = null;
+let drive: Drive | null = null;
+let driveEnabled = false;
+let drivePaused = false;
 let transmissionGhosted = false;
 let ratioTimer: number | null = null;
 
@@ -233,16 +248,19 @@ const captureMaterialStates = (prune = false) => {
 
 const stateByMaterial = () => new Map(materialStates.map((state) => [state.material, state]));
 
+const GHOST_OPACITY = new Map([['Circular_Spline_Ring', 0.45]]);
+
 const setPartGhost = (labels: Set<string>, on: boolean) => {
   if (!actuator) return;
   const states = stateByMaterial();
   for (const part of actuator.parts) {
     if (!labels.has(part.spec.node)) continue;
+    const opacity = GHOST_OPACITY.get(part.spec.node) ?? 0.2;
     for (const material of part.allMaterials) {
       const state = states.get(material);
       if (!state) continue;
       material.transparent = on ? true : state.transparent;
-      material.opacity = on ? 0.2 : state.opacity;
+      material.opacity = on ? opacity : state.opacity;
       material.depthWrite = on ? false : state.depthWrite;
       material.needsUpdate = true;
     }
@@ -256,6 +274,8 @@ const EXPLODE_GHOST = new Set([
   'Output_Cap_Mount_Flange',
 ]);
 
+// The circular spline ghosts lighter than the housing (GHOST_OPACITY 0.45)
+// so the stationary teeth remain legible against the deformed flexspline.
 const TRANSMISSION_GHOST = new Set([
   'Body_Housing',
   'Frameless_Stator_Core',
@@ -566,9 +586,11 @@ const resetCamera = () => {
   driveButton.disabled = false;
   cutButton.disabled = false;
   document.body.classList.remove('is-exploding');
+  drivePaused = false;
   setHousingGhost(false);
   setGhosted(false);
   setGearGhost(false);
+  if (driveEnabled) setGhosted(true);
   setCutEnabled(false);
   if (loadedBounds) frameModel(loadedBounds);
 };
@@ -651,9 +673,50 @@ const collectPartMaterials = (part: ActuatorPart): void => {
   part.object.userData.part = part;
 };
 
+const driveGroupsFor = (loaded: LoadedActuator): DriveGroups => {
+  const input: THREE.Object3D[] = [];
+  const output: THREE.Object3D[] = [];
+  const cage: THREE.Object3D[] = [];
+  const halfSpeed: THREE.Object3D[] = [];
+
+  for (const part of loaded.parts) {
+    if (part.spec.group === 'input') input.push(part.object);
+    else if (part.spec.group === 'output') output.push(part.object);
+    else if (part.spec.node === 'Cross_Roller_Cage') cage.push(part.object);
+  }
+  for (const child of loaded.childGroups) {
+    if (child.group === 'input') input.push(child.object);
+    else if (child.group === 'output') output.push(child.object);
+    else if (child.group === 'half_speed') halfSpeed.push(child.object);
+  }
+
+  return { input, output, cage, halfSpeed, flexMaterial: flexMaterial ?? undefined };
+};
+
+const updateDriveReadout = (): void => {
+  const rpm = Number(inputRpmInput.value);
+  inputRpmValue.textContent = `${rpm} rpm`;
+  outputRpmText.textContent = `${outputRpm(rpm, gearRatio).toFixed(1)} rpm`;
+};
+
+const setDriveEnabled = (on: boolean): void => {
+  driveEnabled = on;
+  driveButton.classList.toggle('is-active', on);
+  driveButton.setAttribute('aria-pressed', String(on));
+  driveControls.hidden = !on;
+  if (on) {
+    drive?.setInputRpm(Number(inputRpmInput.value));
+    setGhosted(true);
+  } else {
+    setGhosted(false);
+  }
+  updateDriveReadout();
+};
+
 const updateRatioUI = (ratio: number): void => {
   ratioInput.value = String(ratio);
   ratioValue.textContent = `${Number.isInteger(ratio) ? ratio : ratio.toFixed(1)}:1`;
+  updateDriveReadout();
 };
 
 /**
@@ -668,9 +731,16 @@ const installGearSet = (loaded: LoadedActuator, ratio: number): void => {
     for (const child of previous.children) savedRotations.set(child.name, child.rotation.clone());
   }
 
-  const next = buildGearSet(gearParams(ratio));
+  const params = gearParams(ratio);
+  const next = buildGearSet(params);
   next.name = 'Harmonic_Gear_Set';
   next.rotation.x = -Math.PI / 2;
+
+  const flexTeeth = next.getObjectByName('Flexspline_Teeth');
+  if (flexTeeth instanceof THREE.Mesh) {
+    flexMaterial = makeFlexMaterial(flexTeeth, params);
+  }
+
   loaded.root.add(next);
 
   const byName = new Map(next.children.map((child) => [child.name, child]));
@@ -713,6 +783,9 @@ const installGearSet = (loaded: LoadedActuator, ratio: number): void => {
     loaded.pickMeshes.push(object);
   });
   loaded.bounds = new THREE.Box3().setFromObject(loaded.root);
+
+  drive?.setRatio(ratio);
+  drive?.setGroups(driveGroupsFor(loaded));
 
   exploder?.update(0);
   captureMaterialStates(true);
@@ -769,6 +842,31 @@ const debugApi = {
     const part = actuator?.parts.find((item) => item.spec.node === node);
     return part?.allMaterials.map((material) => material.opacity) ?? [];
   },
+  drive: () => {
+    const uniforms = flexMaterial?.userData.flexUniforms as
+      | { uFlexPsi?: { value: number } }
+      | undefined;
+    return {
+      enabled: driveEnabled,
+      paused: drivePaused,
+      inputRpm: Number(inputRpmInput.value),
+      ratio: gearRatio,
+      outputRpm: outputRpm(Number(inputRpmInput.value), gearRatio),
+      waveAngle: drive?.waveAngle ?? 0,
+      outputAngle: drive?.outputAngle ?? 0,
+      psi: uniforms?.uFlexPsi?.value ?? null,
+    };
+  },
+  setDrive: (on: boolean): boolean => {
+    setDriveEnabled(on);
+    return driveEnabled;
+  },
+  setInputRpm: (rpm: number): number => {
+    inputRpmInput.value = String(rpm);
+    drive?.setInputRpm(rpm);
+    updateDriveReadout();
+    return Number(inputRpmInput.value);
+  },
 };
 
 (window as unknown as { __ha: typeof debugApi }).__ha = debugApi;
@@ -805,6 +903,11 @@ const boot = async () => {
     loadedBounds = loaded.bounds.clone();
     exploder = new Exploder(loaded.parts, loaded.maxOrder, reduceMotion);
 
+    drive = new Drive(driveGroupsFor(loaded));
+    drive.setRatio(loaded.manifest.ratio.default);
+    drive.setInputRpm(Number(inputRpmInput.value));
+    setDriveEnabled(true);
+
     updateExplodeUI(0);
     frameModel(loadedBounds);
     finishLoading();
@@ -818,6 +921,7 @@ const clock = new THREE.Clock();
 const animate = (now: number) => {
   requestAnimationFrame(animate);
   const dt = Math.min(clock.getDelta(), 0.05);
+  if (driveEnabled && !drivePaused) drive?.update(dt);
   exploder?.update(dt);
   if (cameraMove) {
     updateCameraMove(now);
@@ -843,6 +947,7 @@ explodeInput.addEventListener('input', () => {
   setGhosted(false);
   setGearGhost(false);
   const blocked = percent > 5;
+  drivePaused = blocked;
   driveButton.disabled = blocked;
   cutButton.disabled = blocked;
 });
@@ -864,6 +969,11 @@ ratioInput.addEventListener('input', () => {
 });
 
 cutButton.addEventListener('click', () => setCutEnabled(!cutEnabled));
+driveButton.addEventListener('click', () => setDriveEnabled(!driveEnabled));
+inputRpmInput.addEventListener('input', () => {
+  drive?.setInputRpm(Number(inputRpmInput.value));
+  updateDriveReadout();
+});
 viewOverviewButton.addEventListener('click', resetCamera);
 viewGearButton.addEventListener('click', focusGearView);
 viewOutputButton.addEventListener('click', focusOutputView);

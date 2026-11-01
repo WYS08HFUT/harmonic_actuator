@@ -27,6 +27,20 @@ const shot = async (name) => {
 try {
   await page.goto(URL, { waitUntil: 'networkidle0', timeout: 90_000 });
   await wait(2400);
+
+  const driveStart = await page.evaluate(() => window.__ha.drive());
+  if (!driveStart.enabled || driveStart.inputRpm !== 1000) {
+    throw new Error(`transmission did not auto-start: ${JSON.stringify(driveStart)}`);
+  }
+  await wait(500);
+  const driveAfter = await page.evaluate(() => window.__ha.drive());
+  if (!(driveAfter.waveAngle > driveStart.waveAngle)) {
+    throw new Error(`wave generator did not advance: ${JSON.stringify({ driveStart, driveAfter })}`);
+  }
+  if (!(driveAfter.outputAngle < driveStart.outputAngle)) {
+    throw new Error(`output did not turn backwards: ${JSON.stringify({ driveStart, driveAfter })}`);
+  }
+  console.log('drive auto-run', JSON.stringify({ inputRpm: driveStart.inputRpm, ratio: driveStart.ratio }));
   await shot('initial');
 
   await page.click('#btn-cut');
@@ -49,7 +63,29 @@ try {
     throw new Error(`50:1 tooth counts wrong: ${JSON.stringify(gear50)}`);
   }
   console.log('gear check', JSON.stringify({ ratio: gear50.ratio, zf: gear50.zf, zc: gear50.zc, pickMeshes: gear50.pickMeshes }));
+
+  const flexA = await page.evaluate(() => window.__ha.drive());
+  await wait(600);
+  const flexB = await page.evaluate(() => window.__ha.drive());
+  if (flexA.psi === null || flexB.psi === null || flexA.psi === flexB.psi) {
+    throw new Error(`flexspline psi did not update: ${JSON.stringify({ flexA, flexB })}`);
+  }
+  if (!(flexB.waveAngle > flexA.waveAngle) || !(flexB.outputAngle < flexA.outputAngle)) {
+    throw new Error(`transmission stalled in gear view: ${JSON.stringify({ flexA, flexB })}`);
+  }
+  console.log('flex check', JSON.stringify({ psiA: flexA.psi, psiB: flexB.psi }));
   await shot('gear');
+
+  await page.evaluate(() => window.__ha.setInputRpm(0));
+  await wait(400);
+  const stopA = await page.evaluate(() => window.__ha.drive());
+  await wait(500);
+  const stopB = await page.evaluate(() => window.__ha.drive());
+  if (stopA.waveAngle !== stopB.waveAngle || stopA.outputAngle !== stopB.outputAngle) {
+    throw new Error(`input 0 rpm did not stop: ${JSON.stringify({ stopA, stopB })}`);
+  }
+  console.log('stop check', JSON.stringify({ waveAngle: stopB.waveAngle }));
+  await page.evaluate(() => window.__ha.setInputRpm(1000));
 
   await page.evaluate(() => {
     const slider = document.querySelector('#ratio');
@@ -61,7 +97,11 @@ try {
   if (gear100.ratio !== 100 || gear100.zf !== 200 || gear100.zc !== 202) {
     throw new Error(`ratio rebuild failed: ${JSON.stringify(gear100)}`);
   }
-  console.log('ratio rebuild', JSON.stringify({ ratio: gear100.ratio, zf: gear100.zf, zc: gear100.zc }));
+  const drive100 = await page.evaluate(() => window.__ha.drive());
+  if (drive100.ratio !== 100 || Math.abs(drive100.outputRpm - 10) > 0.01) {
+    throw new Error(`drive did not adopt ratio 100: ${JSON.stringify(drive100)}`);
+  }
+  console.log('ratio rebuild', JSON.stringify({ ratio: gear100.ratio, zf: gear100.zf, zc: gear100.zc, outputRpm: drive100.outputRpm }));
   await shot('gear100');
   await page.evaluate(() => {
     const slider = document.querySelector('#ratio');
@@ -82,6 +122,26 @@ try {
   await page.click('#btn-view-overview');
   await wait(1000);
   await shot('overview');
+
+  await page.evaluate(() => {
+    const slider = document.querySelector('#explode');
+    slider.value = '20';
+    slider.dispatchEvent(new Event('input', { bubbles: true }));
+  });
+  await wait(600);
+  const pauseA = await page.evaluate(() => window.__ha.drive());
+  await wait(400);
+  const pauseB = await page.evaluate(() => window.__ha.drive());
+  if (!pauseA.paused || pauseA.waveAngle !== pauseB.waveAngle) {
+    throw new Error(`explode did not pause the drive: ${JSON.stringify({ pauseA, pauseB })}`);
+  }
+  console.log('pause check', JSON.stringify({ paused: pauseB.paused }));
+  await page.click('#btn-reset');
+  await wait(400);
+  const resumed = await page.evaluate(() => window.__ha.drive());
+  if (!resumed.enabled || resumed.paused) {
+    throw new Error(`reset did not resume the drive: ${JSON.stringify(resumed)}`);
+  }
 
   if (errors.length) throw new Error(errors.join('\n'));
   console.log('visual check PASS');
