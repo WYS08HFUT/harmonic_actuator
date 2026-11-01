@@ -312,6 +312,7 @@
 - **中性零件状态**：柔轮为圆杯；波发生器缩小到能塞进圆柔轮（长轴 ≤Ø46.65）；刚轮、CRB、输出法兰按名义尺寸。STEP/GLB 是零件与装配基准，不是工作变形状态。
 - **GLB 契约**：数值毫米（`export_gltf(..., unit=Unit.M)`），根节点 Y-up；manifest 的 `units:"mm"`/`axis:"Z"` 描述模型坐标，`gltf_up:"Y"`/`gltf_units:"mm"` 描述 GLB；Web 加载时按 `(x, y, z) → (x, z, -y)` 转换偏移与程序化齿形。
 - **查看器状态**：柔轮按 δ(θ,z) 椭圆变形；波发生器为工作椭圆；刚轮固定；齿部真实啮合。
+- **外观配色**：壳体/尾端盖石墨 `#7D838B`，输出盖 `#9AA0A8`，输出法兰 `#D9E0E8`，铜绕组 `#DB802E`，磁钢/CFRP 深石墨；浅色页面上形成石墨-银-铜对比。
 - **2D 教学剖面**：壳体/轴系严格投影，齿部按安装变形状态做局部剖开（teaching composition）；另出一份 `section_neutral.svg` 供 CAD/QA。
 - 交付物：
   - `models/harmonic_actuator_v2_assembly.step`

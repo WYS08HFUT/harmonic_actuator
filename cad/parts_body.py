@@ -64,5 +64,5 @@ def build_body_housing(p: ActuatorParams) -> bd.Part:
             Box(19.0, 20.0, 3.0, align=(C, C, MIN), mode=Mode.SUBTRACT)
     part = body.part
     part.label = "Body_Housing"
-    part.color = "#C4C9D1"
+    part.color = "#7D838B"
     return part

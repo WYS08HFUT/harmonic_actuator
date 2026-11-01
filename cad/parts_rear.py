@@ -31,7 +31,7 @@ def build_rear_cover(p: ActuatorParams) -> bd.Part:
                 Cylinder(1.7, 3.0, align=(C, C, MIN), mode=Mode.SUBTRACT)
     part = cover.part
     part.label = "Rear_Cover"
-    part.color = "#C4C9D1"
+    part.color = "#7D838B"
     return part
 
 
@@ -101,7 +101,7 @@ def build_rear_end_bell(p: ActuatorParams) -> bd.Part:
                 Cylinder(1.7, 10.0, align=(C, C, MIN), mode=Mode.SUBTRACT)
     part = bell.part
     part.label = "Rear_End_Bell"
-    part.color = "#C4C9D1"
+    part.color = "#7D838B"
     return part
 
 

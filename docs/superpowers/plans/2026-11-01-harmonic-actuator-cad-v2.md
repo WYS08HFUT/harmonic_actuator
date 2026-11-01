@@ -20,7 +20,7 @@
 - Kinematic contacts excluded from static interference: FS teeth ↔ CS teeth, CRB rollers ↔ races, WG balls ↔ races, WG flexible race ↔ FS inner wall.
 - Every blind hole is a one-direction cut; never use `Hole(depth=...)` in a thin wall (build123d drills ±depth).
 - Run CAD modules from the project root as `cadgen +0.8.1 run -m cad.<module>` (e.g. `-m cad.checks`), so `import cad.params` works. Check scripts end with `if __name__ == "__main__": main()`.
-- Materials/colors: aluminum `#C4C9D1`, stator `#474D57`, copper `#DB802E`, magnets `#3A3F47`, CFRP `#2A2D33`, steel/bearings `#DCE1E8`, PCB `#1F6B3A`, encoder ring `#5A5F68`, output flange `#D9E0E8`.
+- Materials/colors: housing/end bell `#7D838B`, output cap `#9AA0A8`, output flange `#D9E0E8`, stator `#474D57`, copper `#DB802E`, magnets `#3A3F47`, CFRP `#2A2D33`, steel/bearings `#DCE1E8`, PCB `#1F6B3A`, encoder ring `#5A5F68`.
 - Commit after every task.
 
 ## Review Focus

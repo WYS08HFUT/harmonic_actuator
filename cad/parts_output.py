@@ -185,5 +185,5 @@ def build_output_cap(p: ActuatorParams) -> bd.Part:
             Box(11.0, 20.0, 3.0, align=(C, C, MIN), mode=Mode.SUBTRACT)
     part = cap.part
     part.label = "Output_Cap_Mount_Flange"
-    part.color = "#C4C9D1"
+    part.color = "#9AA0A8"
     return part
