@@ -29,7 +29,8 @@ body {
 body {
   overflow: hidden;
   color: var(--ink);
-  background: var(--paper);
+  background:
+    radial-gradient(circle at 56% 36%, #fffdf8 0%, #f7f3ea 36%, #eee8dc 70%, #e8e1d4 100%);
   font-family: var(--font);
   -webkit-font-smoothing: antialiased;
 }
@@ -60,6 +61,7 @@ select {
   position: fixed;
   inset: 0;
   z-index: 0;
+  background: transparent;
 }
 
 #scene-container canvas {
