@@ -18,6 +18,9 @@ const explodeValue = document.querySelector<HTMLOutputElement>('#explode-value')
 const driveButton = document.querySelector<HTMLButtonElement>('#btn-drive');
 const cutButton = document.querySelector<HTMLButtonElement>('#btn-cut');
 const resetButton = document.querySelector<HTMLButtonElement>('#btn-reset');
+const viewOverviewButton = document.querySelector<HTMLButtonElement>('#btn-view-overview');
+const viewGearButton = document.querySelector<HTMLButtonElement>('#btn-view-gear');
+const viewOutputButton = document.querySelector<HTMLButtonElement>('#btn-view-output');
 const partCard = document.querySelector<HTMLElement>('#part-card');
 const partSystem = document.querySelector<HTMLParagraphElement>('#part-system');
 const partTitle = document.querySelector<HTMLHeadingElement>('#part-title');
@@ -44,6 +47,9 @@ if (
   !driveButton ||
   !cutButton ||
   !resetButton ||
+  !viewOverviewButton ||
+  !viewGearButton ||
+  !viewOutputButton ||
   !partCard ||
   !partSystem ||
   !partTitle ||
@@ -75,6 +81,7 @@ renderer.setClearColor(0x000000, 0);
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
 renderer.toneMappingExposure = 1.06;
 renderer.outputColorSpace = THREE.SRGBColorSpace;
+renderer.localClippingEnabled = true;
 renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 container.appendChild(renderer.domElement);
@@ -168,22 +175,91 @@ interface CameraMove {
 
 let cameraMove: CameraMove | null = null;
 
-interface GhostState {
+interface MaterialState {
   material: THREE.Material;
   transparent: boolean;
   opacity: number;
   depthWrite: boolean;
+  side: THREE.Side;
 }
 
-let ghostStates: GhostState[] = [];
+let materialStates: MaterialState[] = [];
 
-const setHousingGhost = (on: boolean) => {
-  for (const state of ghostStates) {
-    state.material.transparent = on ? true : state.transparent;
-    state.material.opacity = on ? 0.18 : state.opacity;
-    state.material.depthWrite = on ? false : state.depthWrite;
-    state.material.needsUpdate = true;
+const captureMaterialStates = () => {
+  if (!actuator) return;
+  materialStates = actuator.parts.flatMap((part) =>
+    part.allMaterials.map((material) => ({
+      material,
+      transparent: material.transparent,
+      opacity: material.opacity,
+      depthWrite: material.depthWrite,
+      side: material.side,
+    })),
+  );
+};
+
+const stateByMaterial = () => new Map(materialStates.map((state) => [state.material, state]));
+
+const setPartGhost = (labels: Set<string>, on: boolean) => {
+  if (!actuator) return;
+  const states = stateByMaterial();
+  for (const part of actuator.parts) {
+    if (!labels.has(part.spec.node)) continue;
+    for (const material of part.allMaterials) {
+      const state = states.get(material);
+      if (!state) continue;
+      material.transparent = on ? true : state.transparent;
+      material.opacity = on ? 0.2 : state.opacity;
+      material.depthWrite = on ? false : state.depthWrite;
+      material.needsUpdate = true;
+    }
   }
+};
+
+const EXPLODE_GHOST = new Set([
+  'Body_Housing',
+  'Rear_End_Bell',
+  'Rear_Cover',
+  'Output_Cap_Mount_Flange',
+]);
+
+const TRANSMISSION_GHOST = new Set([
+  'Body_Housing',
+  'Frameless_Stator_Core',
+  'Copper_Stator_Windings',
+  'Circular_Spline_Ring',
+  'Output_Cap_Mount_Flange',
+]);
+
+const setHousingGhost = (on: boolean) => setPartGhost(EXPLODE_GHOST, on);
+const setGhosted = (on: boolean) => setPartGhost(TRANSMISSION_GHOST, on);
+
+let cutEnabled = false;
+const cutPlane = new THREE.Plane(new THREE.Vector3(0, 0, -1), 0);
+
+// The global 180° cut exposes the motor, CRB and harmonic section. A true
+// 90° wedge would need a custom clip shader; the gear camera preset frames
+// the cut harmonic section instead, and the FS/WG are never clipped.
+const setCutEnabled = (on: boolean) => {
+  if (!actuator) return;
+  cutEnabled = on;
+  if (on && loadedBounds) {
+    const center = loadedBounds.getCenter(new THREE.Vector3());
+    cutPlane.constant = center.z;
+  }
+  const states = stateByMaterial();
+  for (const part of actuator.parts) {
+    const cut = on && part.spec.cut === true;
+    for (const material of part.allMaterials) {
+      const state = states.get(material);
+      material.clippingPlanes = cut ? [cutPlane] : null;
+      material.clipShadows = cut;
+      if (state) material.side = cut ? THREE.DoubleSide : state.side;
+      material.needsUpdate = true;
+    }
+  }
+  cutButton.classList.toggle('is-active', on);
+  cutButton.setAttribute('aria-pressed', String(on));
 };
 
 const setLoading = (fraction: number) => {
@@ -415,6 +491,101 @@ const pickPart = (clientX: number, clientY: number): ActuatorPart | null => {
   return (hit?.object.userData.part as ActuatorPart | undefined) ?? null;
 };
 
+
+const boundsOfParts = (nodes: string[]): THREE.Box3 | null => {
+  if (!actuator) return null;
+  const box = new THREE.Box3();
+  let found = false;
+  for (const node of nodes) {
+    const part = actuator.parts.find((item) => item.spec.node === node);
+    if (!part) continue;
+    box.expandByObject(part.object);
+    found = true;
+  }
+  return found ? box : null;
+};
+
+const resetCamera = () => {
+  selectPart(null, false);
+  exploder?.setProgress(0);
+  explodeInput.value = '0';
+  updateExplodeUI(0);
+  autoFit = false;
+  hasInteracted = false;
+  controls.autoRotate = !reduceMotion;
+  driveButton.disabled = false;
+  cutButton.disabled = false;
+  document.body.classList.remove('is-exploding');
+  setHousingGhost(false);
+  setGhosted(false);
+  setCutEnabled(false);
+  if (loadedBounds) frameModel(loadedBounds);
+};
+
+const focusGearView = () => {
+  const box = boundsOfParts([
+    'Flexspline_Cup',
+    'Circular_Spline_Ring',
+    'Wave_Generator_Cam',
+    'Wave_Generator_Balls',
+    'Wave_Generator_Flexible_Race',
+  ]);
+  if (!box) return;
+  selectPart(null, false);
+  setCutEnabled(true);
+  setGhosted(false);
+  hasInteracted = true;
+  autoFit = false;
+  controls.autoRotate = false;
+  const direction = new THREE.Vector3(0.34, 0.24, 1.0).normalize();
+  const framing = framingForBounds(box, 1.55);
+  const target = framing.target.clone();
+  moveCamera(target.clone().addScaledVector(direction, framing.distance), target, 780);
+};
+
+const focusOutputView = () => {
+  const box = boundsOfParts([
+    'Output_Flange',
+    'Cross_Roller_Bearing_Assembly',
+    'Output_Cap_Mount_Flange',
+    'Output_Encoder_Ring',
+    'Output_Encoder_PCB',
+  ]);
+  if (!box) return;
+  selectPart(null, false);
+  setCutEnabled(true);
+  setGhosted(false);
+  hasInteracted = true;
+  autoFit = false;
+  controls.autoRotate = false;
+  const direction = new THREE.Vector3(0.72, 0.55, 0.95).normalize();
+  const framing = framingForBounds(box, 1.8);
+  const target = framing.target.clone();
+  moveCamera(target.clone().addScaledVector(direction, framing.distance), target, 780);
+};
+
+const debugApi = {
+  cutEnabled: () => cutEnabled,
+  checkCut: () => {
+    const part = (node: string) => actuator?.parts.find((item) => item.spec.node === node);
+    const clipped = (node: string) =>
+      part(node)?.allMaterials.every(
+        (material) => Array.isArray(material.clippingPlanes) && material.clippingPlanes.length > 0,
+      ) ?? null;
+    const unclipped = (node: string) =>
+      part(node)?.allMaterials.every((material) => material.clippingPlanes === null) ?? null;
+    return {
+      cutEnabled,
+      bodyClipped: clipped('Body_Housing'),
+      fsUnclipped: unclipped('Flexspline_Cup'),
+      wgUnclipped: unclipped('Wave_Generator_Cam'),
+      outputFlangeUnclipped: unclipped('Output_Flange'),
+    };
+  },
+};
+
+(window as unknown as { __ha: typeof debugApi }).__ha = debugApi;
+
 const boot = async () => {
   try {
     setLoading(0.03);
@@ -445,22 +616,7 @@ const boot = async () => {
     loadedBounds = loaded.bounds.clone();
     exploder = new Exploder(loaded.parts, loaded.maxOrder, reduceMotion);
 
-    const ghostNodes = new Set([
-      'Body_Housing',
-      'Rear_End_Bell',
-      'Rear_Cover',
-      'Output_Cap_Mount_Flange',
-    ]);
-    ghostStates = loaded.parts
-      .filter((part) => ghostNodes.has(part.spec.node))
-      .flatMap((part) =>
-        part.allMaterials.map((material) => ({
-          material,
-          transparent: material.transparent,
-          opacity: material.opacity,
-          depthWrite: material.depthWrite,
-        })),
-      );
+    captureMaterialStates();
 
     updateExplodeUI(0);
     frameModel(loadedBounds);
@@ -496,27 +652,21 @@ explodeInput.addEventListener('input', () => {
   controls.autoRotate = false;
   document.body.classList.toggle('is-exploding', percent > 1);
   setHousingGhost(percent > 35);
+  if (cutEnabled) setCutEnabled(false);
+  setGhosted(false);
   const blocked = percent > 5;
   driveButton.disabled = blocked;
   cutButton.disabled = blocked;
 });
 
-resetButton.addEventListener('click', () => {
-  selectPart(null, false);
-  exploder?.setProgress(0);
-  explodeInput.value = '0';
-  updateExplodeUI(0);
-  autoFit = false;
-  hasInteracted = false;
-  controls.autoRotate = !reduceMotion;
-  driveButton.disabled = false;
-  cutButton.disabled = false;
-  document.body.classList.remove('is-exploding');
-  setHousingGhost(false);
-  if (loadedBounds) frameModel(loadedBounds);
-});
+resetButton.addEventListener('click', resetCamera);
 
 partClose.addEventListener('click', () => selectPart(null, true));
+
+cutButton.addEventListener('click', () => setCutEnabled(!cutEnabled));
+viewOverviewButton.addEventListener('click', resetCamera);
+viewGearButton.addEventListener('click', focusGearView);
+viewOutputButton.addEventListener('click', focusOutputView);
 
 partSelect.addEventListener('change', () => {
   if (!actuator) return;
