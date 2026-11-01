@@ -7,7 +7,7 @@
     "dev": "vite",
     "build": "tsc --noEmit && vite build",
     "preview": "vite preview",
-    "test": "node --import tsx --test src/engine/*.test.ts",
+    "test": "node --import tsx --test src/engine/*.test.ts src/data/*.test.ts",
     "check:visual": "node scripts/visual-check.mjs"
   },
   "dependencies": {

@@ -163,12 +163,20 @@ export async function loadActuator(
   const bounds = new THREE.Box3();
   for (const part of parts) bounds.expandByObject(part.object);
   const maxOrder = Math.max(0, ...manifest.parts.map((part) => part.explode_order));
+  const visiblePickMeshes = pickMeshes.filter((mesh) => {
+    let object: THREE.Object3D | null = mesh;
+    while (object) {
+      if (!object.visible) return false;
+      object = object.parent;
+    }
+    return true;
+  });
 
   return {
     root,
     manifest,
     parts,
-    pickMeshes,
+    pickMeshes: visiblePickMeshes,
     bounds,
     maxOrder,
     proceduralNodes,
