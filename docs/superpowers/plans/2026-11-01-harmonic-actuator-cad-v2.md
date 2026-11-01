@@ -20,7 +20,7 @@
 - Kinematic contacts excluded from static interference: FS teeth ↔ CS teeth, CRB rollers ↔ races, WG balls ↔ races, WG flexible race ↔ FS inner wall.
 - Every blind hole is a one-direction cut; never use `Hole(depth=...)` in a thin wall (build123d drills ±depth).
 - Run CAD modules from the project root as `cadgen +0.8.1 run -m cad.<module>` (e.g. `-m cad.checks`), so `import cad.params` works. Check scripts end with `if __name__ == "__main__": main()`.
-- Materials/colors: aluminum `#C4C9D1`, stator `#474D57`, copper `#DB802E`, magnets `#3A3F47`, CFRP `#2A2D33`, steel/bearings `#DCE1E8`, PCB `#1F6B3A`, encoder ring `#5A5F68`, output flange `#D9E0E8`.
+- Materials/colors: housing/end bell `#7D838B`, output cap `#9AA0A8`, output flange `#D9E0E8`, stator `#474D57`, copper `#DB802E`, magnets `#3A3F47`, CFRP `#2A2D33`, steel/bearings `#DCE1E8`, PCB `#1F6B3A`, encoder ring `#5A5F68`.
 - Commit after every task.
 
 ## Review Focus
@@ -129,7 +129,7 @@ Expected: FAIL with `ModuleNotFoundError: No module named 'cad.parts_rear'`.
 
 - [ ] **Step 3: Implement the rear parts**
 
-Build with `BuildPart` and explicit cylinders/boxes. The rear end bell is one solid: OD110, rear face Z0, front face Z17, a bearing boss at Z10–17 with a Ø42 H7 seat × 7 deep, a central through-opening Ø30, 4×M3 rear-cover holes on PCD40, 8×M3 body holes on PCD100 (one-direction cuts from the rear), a rear-cover pocket, and a cable opening Ø24. The rear bearing is a simplified three-ring Compound: outer ring Ø42/Ø39×7, inner ring Ø33/Ø30×7, 10 balls Ø3 at the pitch radius 18.
+Build with `BuildPart` and explicit cylinders/boxes. The rear end bell is one solid: OD110, rear face Z0, front face Z17, a bearing boss at Z10–17 with a Ø42 H7 seat × 7 deep, a central through-opening Ø30, 4×M3 rear-cover holes on PCD50, 8×M3 body holes on PCD100 (one-direction cuts from the rear), a rear-cover pocket, and a cable opening Ø24. The rear bearing is a simplified three-ring Compound: outer ring Ø42/Ø39×7, inner ring Ø33/Ø30×7, 10 balls Ø3 at the pitch radius 18.
 
 - [ ] **Step 4: Run the checks to verify they pass**
 
@@ -395,7 +395,7 @@ Expected: `FileNotFoundError` for the assets.
 
 - [ ] **Step 3: Implement `export_assets.py` and `PART_SPECS`**
 
-Use `export_step`, `export_stl`, `export_gltf(..., binary=True)`. Write the manifest with the exact explode offsets/orders from the spec's plan table:
+Use `export_step`, `export_stl`, `export_gltf(..., unit=Unit.M, binary=True)` so the GLB carries numeric millimetres with a Y-up root. Write the manifest with the exact explode offsets/orders from the spec's plan table, plus `gltf_up:"Y"` and `gltf_units:"mm"`:
 - Output cap +Z80/order0; output encoder PCB +Z60/1; ring +Z55/1; cage +Z50/2; outer race +Z48/2; inner race +Z42/2; output flange +Z35/3; CS +Z28/4; FS +Z20/5; WG cam/balls/race +Z12/5; front bearing -Z10/6; stator -Z20/7; windings -Z25/7; rotor hub -Z35/8; magnets -Z40/8; sleeve -Z45/8; rear bearing -Z50/9; rear end bell -Z60/9; input ring -Z65/10; input PCB -Z70/10; rear cover -Z75/10; body 0/0.
 
 Mark `Flexspline_Cup`, `Circular_Spline_Ring`, `Wave_Generator_Cam`, `Wave_Generator_Balls`, `Wave_Generator_Flexible_Race` as `procedural: true`. Mark `cut: true` for body/stator/windings/CS/rear bell/rear cover/output cap; `ghost_in_transmission: true` for body/stator/windings/CS/output cap.
@@ -492,6 +492,25 @@ git commit -m "fix: make legacy generator path-safe and document v2 pipeline"
 ```
 
 ---
+
+
+## Post-review fixes (v2.1)
+
+The independent CAD review found four Critical and eight Important issues. All were fixed and re-exported; the final `cadgen +0.8.1 run -m cad.checks` prints all PASS.
+
+- **C1 GLB frame/unit:** `export_gltf(..., unit=Unit.M)` keeps numeric millimetres; the GLB root is Y-up. The manifest adds `gltf_up:"Y"`/`gltf_units:"mm"`; the web plan converts offsets/procedural Z stations with `(x,y,z)→(x,z,-y)`. `check_assets` asserts POSITION bounds > 60, the Y-up root quaternion, and the web GLB byte equality.
+- **C2 rear cover screws:** `rear_cover_bolt_pcd` is 50 mm, matching the end-bell posts; `check_rear` verifies a screw passes the cover and engages the bell.
+- **C3 FS–output joint:** FS hub holes are M3 clearance (r1.7), output-flange nose holes are M3 tap cores (r1.25), so the 8 screws enter from the FS side before the FS is inserted. FS hub bore is Ø32, clearing the cam bolt socket. Spec §4.9 assembly order is reordered (cam first, then bench FS+flange).
+- **C4 stator–windings:** the 24 coils sit in the slots (slot sides r34–38.8, end turns Z15–20/46–51 outside the core); copper-in-iron overlap is 0; the stator–windings pair is back in the zero-overlap sweep.
+- **I1 CRB inner retention:** output flange has a rotating Z92–93 shoulder (r35–41); the body is relieved to r42; the inner ring is supported by the rotating part and clears the static body by 1.0 mm. The model keeps the simplified inner OD82 (catalog Ø84.8; cap clearance 2.0 vs 0.6) documented in the spec/risks.
+- **I2 bearing child rotation:** `Rear_Bearing_Inner`/`Front_Bearing_Inner` are `input`, their balls `half_speed`, via manifest `child_groups`; the outer rings stay static.
+- **I3 rear cover cut:** `Rear_Cover` is `cut:true`; `check_assets` asserts the exact cut/ghost sets.
+- **I4 phase check:** the 90° wedge is tangential (0.2 radial × 4 tangential); a mathematical phase check plus a one-tooth negative control were added.
+- **I5 Ø44 spigot:** output flange has the male spigot ring at Z85–87; the FS hub has the matching recess; `check_output`/`check_harmonic` verify it.
+- **I6 pilot interface:** the shell's output pilot is a Ø42 H7 recess; the customer part is the Ø42 h6 male spigot; spec §4.3/§4.7 updated.
+- **I7 checks:** added GLB numeric/root/web-hash, cut/ghost/child-group flags, cover/bell, FS/flange, bell/body, cap/body, cam/rotor screw paths, CRB rotating/static support, WG child contacts, FS–CS bound, cutaway untouched volumes, duplicate names/empty meshes.
+- **I8 exclusions:** only FS–CS and WG race–FS are excluded broadly; stator–windings is included again; WG cam/balls vs FS are checked; FS–CS neutral overlap is bounded at 250 mm³; CRB cage–race tolerance is 1 mm³.
+- **Deferred minors:** CRB V-groove is a visual placeholder (not 45°); inner OD82/cap2.0 simplification; M4/M5 hole diameters mix clearance/tap conventions; CS root 26.15 vs 26.125; CAD rectangular tooth slots vs viewer trapezoids; 2D SVGs are schematic half-sections; output-cap local M3 bosses omitted; GLB ~11.9 MB optimization deferred to web Task 10; `Cross_Roller_Cage` is roller-only; drawing viewBox/geometry check is string-level.
 
 ## Self-Review
 

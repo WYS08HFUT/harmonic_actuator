@@ -15,7 +15,7 @@ import matplotlib.pyplot as plt
 from matplotlib.patches import Circle as MplCircle, Rectangle as MplRect
 from mpl_toolkits.mplot3d.art3d import Poly3DCollection
 
-OUT_DIR = "/working_dir/c_adb06c6cc4d5d4f9/artifacts/file_generation/ttl=63d/output"
+OUT_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "legacy_output")
 os.makedirs(OUT_DIR, exist_ok=True)
 
 
@@ -535,9 +535,12 @@ def write_multibody_obj(obj_path: str, components: list):
 
 def write_iso_step_file(step_path: str, components: list):
     """
-    Writes a valid ISO-10303-21 AP203/AP214 STEP file containing the complete multi-body
-    faceted B-Rep & analytical shell representation of the actuator sub-assemblies.
+    DEPRECATED legacy writer. It emits a surface-only, faceted ISO-10303-21
+    file whose FACE_SURFACE entities reference an axis placement rather than a
+    PLANE, so readers drop the geometry. It is not the v2 solid STEP; use
+    `cad.export_assets` for the kernel-exported assembly.
     """
+    print("WARNING: legacy faceted surface STEP is not a solid STEP; use cad.export_assets.py.")
     lines = [
         "ISO-10303-21;",
         "HEADER;",
@@ -617,7 +620,7 @@ def write_iso_step_file(step_path: str, components: list):
 
     with open(step_path, "w", encoding="utf-8") as sf:
         sf.write("\n".join(lines) + "\n")
-    print(f"Saved STEP CAD Model: {step_path} ({os.path.getsize(step_path)/1024:.1f} KB)")
+    print(f"Saved legacy faceted surface file (not a solid STEP): {step_path} ({os.path.getsize(step_path)/1024:.1f} KB)")
 
 
 # ==============================================================================
@@ -911,10 +914,9 @@ if __name__ == "__main__":
     comps = generate_all_components()
     stl_file = os.path.join(OUT_DIR, "harmonic_actuator_cutaway.stl")
     obj_file = os.path.join(OUT_DIR, "harmonic_actuator_assembly.obj")
-    step_file = os.path.join(OUT_DIR, "harmonic_actuator_assembly.step")
     png_file = os.path.join(OUT_DIR, "harmonic_actuator_cad_blueprint.png")
 
     write_binary_stl(stl_file, comps)
     write_multibody_obj(obj_file, comps)
-    write_iso_step_file(step_file, comps)
+    print("Legacy faceted STEP writer is deprecated; v2 solid STEP: cad/export_assets.py.")
     render_engineering_blueprint(png_file, comps)

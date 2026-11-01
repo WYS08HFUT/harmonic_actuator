@@ -1,0 +1,366 @@
+{
+  "id": "ha-110",
+  "title": "谐波关节模组 HA-110",
+  "units": "mm",
+  "axis": "Z",
+  "gltf_up": "Y",
+  "gltf_units": "mm",
+  "parts": [
+    {
+      "node": "Rear_Cover",
+      "group": "static",
+      "explode_offset": [
+        0.0,
+        0.0,
+        -75.0
+      ],
+      "explode_order": 10,
+      "cut": true,
+      "ghost_in_transmission": false,
+      "procedural": false,
+      "teaching": "rear_cover"
+    },
+    {
+      "node": "Input_Encoder_PCB",
+      "group": "static",
+      "explode_offset": [
+        0.0,
+        0.0,
+        -70.0
+      ],
+      "explode_order": 10,
+      "cut": false,
+      "ghost_in_transmission": false,
+      "procedural": false,
+      "teaching": "input_encoder_pcb"
+    },
+    {
+      "node": "Input_Encoder_Ring",
+      "group": "input",
+      "explode_offset": [
+        0.0,
+        0.0,
+        -65.0
+      ],
+      "explode_order": 10,
+      "cut": false,
+      "ghost_in_transmission": false,
+      "procedural": false,
+      "teaching": "input_encoder_ring"
+    },
+    {
+      "node": "Rear_End_Bell",
+      "group": "static",
+      "explode_offset": [
+        0.0,
+        0.0,
+        -60.0
+      ],
+      "explode_order": 9,
+      "cut": true,
+      "ghost_in_transmission": false,
+      "procedural": false,
+      "teaching": "rear_end_bell"
+    },
+    {
+      "node": "Rear_Bearing_6806",
+      "group": "static",
+      "explode_offset": [
+        0.0,
+        0.0,
+        -50.0
+      ],
+      "explode_order": 9,
+      "cut": false,
+      "ghost_in_transmission": false,
+      "procedural": false,
+      "teaching": "rear_bearing",
+      "child_groups": {
+        "Rear_Bearing_Inner": "input",
+        "Rear_Bearing_Balls": "half_speed"
+      }
+    },
+    {
+      "node": "Rotor_Hub",
+      "group": "input",
+      "explode_offset": [
+        0.0,
+        0.0,
+        -35.0
+      ],
+      "explode_order": 8,
+      "cut": false,
+      "ghost_in_transmission": false,
+      "procedural": false,
+      "teaching": "rotor"
+    },
+    {
+      "node": "Frameless_Stator_Core",
+      "group": "static",
+      "explode_offset": [
+        0.0,
+        0.0,
+        -20.0
+      ],
+      "explode_order": 7,
+      "cut": true,
+      "ghost_in_transmission": true,
+      "procedural": false,
+      "teaching": "stator"
+    },
+    {
+      "node": "Copper_Stator_Windings",
+      "group": "static",
+      "explode_offset": [
+        0.0,
+        0.0,
+        -25.0
+      ],
+      "explode_order": 7,
+      "cut": true,
+      "ghost_in_transmission": true,
+      "procedural": false,
+      "teaching": "windings"
+    },
+    {
+      "node": "NdFeB_Rotor_Magnets",
+      "group": "input",
+      "explode_offset": [
+        0.0,
+        0.0,
+        -40.0
+      ],
+      "explode_order": 8,
+      "cut": false,
+      "ghost_in_transmission": false,
+      "procedural": false,
+      "teaching": "magnets"
+    },
+    {
+      "node": "Carbon_Fiber_Sleeve",
+      "group": "input",
+      "explode_offset": [
+        0.0,
+        0.0,
+        -45.0
+      ],
+      "explode_order": 8,
+      "cut": false,
+      "ghost_in_transmission": false,
+      "procedural": false,
+      "teaching": "sleeve"
+    },
+    {
+      "node": "Front_Bearing_6806",
+      "group": "static",
+      "explode_offset": [
+        0.0,
+        0.0,
+        -10.0
+      ],
+      "explode_order": 6,
+      "cut": false,
+      "ghost_in_transmission": false,
+      "procedural": false,
+      "teaching": "front_bearing",
+      "child_groups": {
+        "Front_Bearing_Inner": "input",
+        "Front_Bearing_Balls": "half_speed"
+      }
+    },
+    {
+      "node": "Body_Housing",
+      "group": "static",
+      "explode_offset": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "explode_order": 0,
+      "cut": true,
+      "ghost_in_transmission": true,
+      "procedural": false,
+      "teaching": "body"
+    },
+    {
+      "node": "Circular_Spline_Ring",
+      "group": "static",
+      "explode_offset": [
+        0.0,
+        0.0,
+        28.0
+      ],
+      "explode_order": 4,
+      "cut": true,
+      "ghost_in_transmission": true,
+      "procedural": true,
+      "teaching": "cs"
+    },
+    {
+      "node": "Flexspline_Cup",
+      "group": "output",
+      "explode_offset": [
+        0.0,
+        0.0,
+        20.0
+      ],
+      "explode_order": 5,
+      "cut": false,
+      "ghost_in_transmission": false,
+      "procedural": true,
+      "teaching": "fs"
+    },
+    {
+      "node": "Wave_Generator_Cam",
+      "group": "input",
+      "explode_offset": [
+        0.0,
+        0.0,
+        12.0
+      ],
+      "explode_order": 5,
+      "cut": false,
+      "ghost_in_transmission": false,
+      "procedural": true,
+      "teaching": "wg_cam"
+    },
+    {
+      "node": "Wave_Generator_Balls",
+      "group": "input",
+      "explode_offset": [
+        0.0,
+        0.0,
+        12.0
+      ],
+      "explode_order": 5,
+      "cut": false,
+      "ghost_in_transmission": false,
+      "procedural": true,
+      "teaching": "wg_balls"
+    },
+    {
+      "node": "Wave_Generator_Flexible_Race",
+      "group": "input",
+      "explode_offset": [
+        0.0,
+        0.0,
+        12.0
+      ],
+      "explode_order": 5,
+      "cut": false,
+      "ghost_in_transmission": false,
+      "procedural": true,
+      "teaching": "wg_race"
+    },
+    {
+      "node": "Cross_Roller_Outer_Race",
+      "group": "static",
+      "explode_offset": [
+        0.0,
+        0.0,
+        48.0
+      ],
+      "explode_order": 2,
+      "cut": false,
+      "ghost_in_transmission": false,
+      "procedural": false,
+      "teaching": "crb_outer"
+    },
+    {
+      "node": "Cross_Roller_Inner_Race",
+      "group": "output",
+      "explode_offset": [
+        0.0,
+        0.0,
+        42.0
+      ],
+      "explode_order": 2,
+      "cut": false,
+      "ghost_in_transmission": false,
+      "procedural": false,
+      "teaching": "crb_inner"
+    },
+    {
+      "node": "Cross_Roller_Cage",
+      "group": "half_speed",
+      "explode_offset": [
+        0.0,
+        0.0,
+        50.0
+      ],
+      "explode_order": 2,
+      "cut": false,
+      "ghost_in_transmission": false,
+      "procedural": false,
+      "teaching": "crb_cage"
+    },
+    {
+      "node": "Output_Flange",
+      "group": "output",
+      "explode_offset": [
+        0.0,
+        0.0,
+        35.0
+      ],
+      "explode_order": 3,
+      "cut": false,
+      "ghost_in_transmission": false,
+      "procedural": false,
+      "teaching": "output_flange"
+    },
+    {
+      "node": "Output_Encoder_Ring",
+      "group": "output",
+      "explode_offset": [
+        0.0,
+        0.0,
+        55.0
+      ],
+      "explode_order": 1,
+      "cut": false,
+      "ghost_in_transmission": false,
+      "procedural": false,
+      "teaching": "output_encoder_ring"
+    },
+    {
+      "node": "Output_Encoder_PCB",
+      "group": "static",
+      "explode_offset": [
+        0.0,
+        0.0,
+        60.0
+      ],
+      "explode_order": 1,
+      "cut": false,
+      "ghost_in_transmission": false,
+      "procedural": false,
+      "teaching": "output_encoder_pcb"
+    },
+    {
+      "node": "Output_Cap_Mount_Flange",
+      "group": "static",
+      "explode_offset": [
+        0.0,
+        0.0,
+        80.0
+      ],
+      "explode_order": 0,
+      "cut": true,
+      "ghost_in_transmission": true,
+      "procedural": false,
+      "teaching": "output_cap"
+    }
+  ],
+  "ratio": {
+    "min": 20,
+    "max": 100,
+    "step": 0.5,
+    "default": 50
+  },
+  "input_speed": {
+    "min": 0,
+    "max": 3000,
+    "default": 1000,
+    "visual_scale": 0.05
+  }
+}

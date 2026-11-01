@@ -10,7 +10,7 @@
 
 **Spec:** `docs/superpowers/specs/2026-11-01-harmonic-actuator-explainer-design.md`
 
-**Prerequisite:** The CAD plan (`docs/superpowers/plans/2026-11-01-harmonic-actuator-cad-v2.md`) has exported `harmonic_actuator_v2.glb`, `harmonic_actuator.json`, and `harmonic_actuator_section_teaching.svg` into `web/public/assets/`.
+**Prerequisite:** The CAD plan (`docs/superpowers/plans/2026-11-01-harmonic-actuator-cad-v2.md`) has exported `harmonic_actuator_v2.glb`, `harmonic_actuator.json`, and `harmonic_actuator_section_teaching.svg` into `web/public/assets/`. The GLB is numeric millimetres with a Y-up root; the manifest stores model Z-up offsets (`axis:"Z"`, `gltf_up:"Y"`) and bearing `child_groups`.
 
 ## Global Constraints
 
@@ -18,6 +18,7 @@
 - Single-screen tool; bottom control bar; no page scrolling for the main experience.
 - Explode slider 0–100%; cutaway toggle; transmission toggle (auto-run); input speed 0–3000 rpm; ratio 20–100 with 0.5 step; diagram button; reset.
 - Ratio math: `i = Zf/(Zc−Zf)`, `Zf=2i`, `Zc=Zf+2`, `m=25/i`, pitch radius 25 mm; working WG major/minor = FS inner radius ± m.
+- Frame contract: GLB is numeric mm, root Y-up. Manifest offsets are model Z-up. Convert every offset and every procedural Z station with `(x,y,z) → (x,z,-y)`; never add mm/Z-up geometry directly to the Y-up scene.
 - Input speed display is real rpm; 3D uses a 1/20 visual slow-motion with a visible “演示慢放 ×1/20” badge.
 - Copy: Chinese, customer/popular-science level; performance claims only as structure principles + “结构原理示意，最终参数以正式规格书为准”; no torque/speed numbers.
 - No React; no post-processing; `pixelRatio = min(devicePixelRatio, 2)`.
@@ -133,8 +134,8 @@ git commit -m "feat(web): scaffold Vite + Three.js app"
 - Consumes: nothing.
 - Produces:
   - `RotationGroup = 'static' | 'input' | 'output' | 'half_speed'`
-  - `PartSpec { node, group, explode_offset, explode_order, cut?, ghost_in_transmission?, teaching, procedural? }`
-  - `ActuatorManifest { id, title, units, axis, parts, ratio:{min,max,step,default}, input_speed:{min,max,default,visual_scale} }`
+  - `PartSpec { node, group, explode_offset, explode_order, cut?, ghost_in_transmission?, teaching, procedural?, child_groups?: Record<string, 'input' | 'output' | 'half_speed'> }`
+  - `ActuatorManifest { id, title, units, axis, gltf_up: 'Y', gltf_units: 'mm', parts, ratio:{min,max,step,default}, input_speed:{min,max,default,visual_scale} }`
   - `parseManifest(data: unknown): ActuatorManifest`
 
 - [ ] **Step 1: Write the failing test**
@@ -154,7 +155,7 @@ Expected: FAIL with `Cannot find module './manifest.ts'`.
 
 - [ ] **Step 3: Implement `types.ts` and `manifest.ts`**
 
-`parseManifest` validates required keys, finite numbers, node uniqueness, group membership, offset length, and `units === 'mm'` / `axis === 'Z'`. Throw `Error` with the field name in the message.
+`parseManifest` validates required keys, finite numbers, node uniqueness, group membership, offset length, `units === 'mm'`, `axis === 'Z'`, `gltf_up === 'Y'`, `gltf_units === 'mm'`, and any `child_groups` values. Throw `Error` with the field name in the message.
 
 - [ ] **Step 4: Run to verify pass**
 
@@ -183,13 +184,14 @@ git commit -m "feat(web): validate actuator manifest"
 - Consumes: `ActuatorManifest`, `PartSpec` from Task 1.
 - Produces:
   - `ActuatorPart { index, spec, object, meshes, allMaterials, standardMaterials, basePosition, baseQuaternion, offset, localBox }`
-  - `LoadedActuator { root, manifest, parts, pickMeshes, bounds, maxOrder, proceduralNodes }`
+  - `LoadedActuator { root, manifest, parts, pickMeshes, bounds, maxOrder, proceduralNodes, childGroups: Array<{ object: THREE.Object3D; group: 'input' | 'output' | 'half_speed' }> }`
+  - `toGltfOffset(v: [number, number, number]): THREE.Vector3` → `(x, z, -y)`
   - `loadActuator(glbUrl, manifestUrl, onProgress?): Promise<LoadedActuator>`
   - `findNode(root, name): THREE.Object3D | null` (exported for tests)
 
 - [ ] **Step 1: Write the failing test**
 
-`loadActuator.test.ts` uses a plain `THREE.Group` with named children (`Body_Housing`, `Flexspline_Cup`) and a two-part manifest; asserts `findNode` returns the child, missing names return null, and `bounds` is finite. No GLB fetch in this test.
+`loadActuator.test.ts` uses a plain `THREE.Group` with named children (`Body_Housing`, `Flexspline_Cup`) and a two-part manifest; asserts `findNode` returns the child, missing names return null, `toGltfOffset([0,0,-75])` is `(0,-75,0)`, `toGltfOffset([1,2,3])` is `(1,3,-2)`, and `bounds` is finite. No GLB fetch in this test.
 
 - [ ] **Step 2: Run to verify failure**
 
@@ -198,7 +200,7 @@ Expected: FAIL with `Cannot find module './loadActuator.ts'`.
 
 - [ ] **Step 3: Implement the loader**
 
-`loadActuator` fetches the manifest (via `parseManifest`) and loads the GLB with `GLTFLoader`. For each manifest part: find the node, clone its materials, set emissive for highlight, record base position/quaternion, compute local box, add to `pickMeshes`. Hide nodes whose `spec.procedural === true` (`object.visible = false`) and record them in `proceduralNodes`. Compute bounds from visible parts. `onProgress` receives the GLB download fraction.
+`loadActuator` fetches the manifest (via `parseManifest`) and loads the GLB with `GLTFLoader`. For each manifest part: find the node, clone its materials, set emissive for highlight, record base position/quaternion, compute local box, add to `pickMeshes`, and set `offset = toGltfOffset(spec.explode_offset)` (model Z-up → glTF Y-up). Recursively resolve `spec.child_groups` into `childGroups`. Hide nodes whose `spec.procedural === true` and record them in `proceduralNodes`. Compute bounds from visible parts. `onProgress` receives the GLB download fraction.
 
 - [ ] **Step 4: Wire the loader into `main.ts`**
 
@@ -394,7 +396,7 @@ Generate a closed annular BufferGeometry for the FS external teeth and the CS in
 
 - [ ] **Step 5: Replace the hidden GLB harmonic nodes**
 
-In `main.ts`, after load, create `gearSet = buildGearSet(gearParams(50))`; add it to the scene; hide the GLB nodes listed in `proceduralNodes`. Map the manifest part specs for the five nodes to the procedural children so explode offsets, orders, picking, and teaching cards still work. On ratio change (debounced 100 ms), dispose and rebuild the gear set, preserving the current rotation angles.
+In `main.ts`, after load, create `gearSet = buildGearSet(gearParams(50))`; set `gearSet.rotation.x = -Math.PI / 2` so its model Z-up stations land in the GLB's Y-up frame; add it to the scene; hide the GLB nodes listed in `proceduralNodes`. Map the manifest part specs for the five nodes to the procedural children; convert their explode offsets with `toGltfOffset` so explode offsets, orders, picking, and teaching cards still work. On ratio change (debounced 100 ms), dispose and rebuild the gear set, preserving the current rotation angles.
 
 - [ ] **Step 6: Run tests and verify the ratio rebuild**
 
@@ -428,7 +430,7 @@ git commit -m "feat(web): generate live 100/102 harmonic gears for any ratio"
   - `deformRadius(r: number, theta: number, z: number, psi: number, module: number, rimZ: number, diaphragmZ: number): number`
   - `makeFlexMaterial(flex: THREE.Mesh, params: GearParams): THREE.ShaderMaterial`
   - `updateFlexUniforms(material, psi: number): void`
-  - `class Drive { constructor(groups: { input: THREE.Object3D[]; output: THREE.Object3D[]; cage?: THREE.Object3D[]; flexMaterial?: THREE.ShaderMaterial }); setInputRpm(rpm: number); setRatio(ratio: number); update(dt: number): void; inputAngle: number; outputAngle: number; waveAngle: number; }`
+  - `class Drive { constructor(groups: { input: THREE.Object3D[]; output: THREE.Object3D[]; cage?: THREE.Object3D[]; halfSpeed?: THREE.Object3D[]; flexMaterial?: THREE.ShaderMaterial }); setInputRpm(rpm: number); setRatio(ratio: number); update(dt: number): void; inputAngle: number; outputAngle: number; waveAngle: number; }`
   - `outputRpm(inputRpm: number, ratio: number): number`
 
 - [ ] **Step 1: Write the failing tests**
@@ -453,7 +455,7 @@ Use a `ShaderMaterial` on the FS meshes: `onBeforeCompile` of a `MeshStandardMat
 
 - [ ] **Step 4: Implement the drive groups**
 
-Group the input parts (`Rotor_Hub`, magnets, sleeve, input encoder ring, WG cam/balls/race) and the output parts (`Flexspline_Cup`, output flange, CRB inner ring, output encoder ring). Rotate input groups by `+waveAngle`, output groups by `-waveAngle/ratio`. Update the FS uniform `psi = waveAngle - outputAngle` in the FS local frame. The CS, housing, stator, windings, output cap, and PCBs stay fixed. The CRB cage rotates at `outputAngle/2`.
+Group the input parts (`Rotor_Hub`, magnets, sleeve, input encoder ring, WG cam/balls/race, plus the two 6806 inner rings resolved from `child_groups`) and the output parts (`Flexspline_Cup`, output flange, CRB inner ring, output encoder ring). Rotate input groups by `+waveAngle`, output groups by `-waveAngle/ratio`; rotate the 6806 balls and the CRB cage at half speed. The bearing outer rings stay static. Update the FS uniform `psi = waveAngle - outputAngle` in the FS local frame. The CS, housing, stator, windings, output cap, and PCBs stay fixed. The CRB cage rotates at `outputAngle/2`.
 
 - [ ] **Step 5: Add the transmission controls**
 
@@ -581,7 +583,7 @@ git commit -m "feat(web): responsive layout, keyboard, reduced motion, visual ch
 - [ ] **Step 1: Measure the GLB and page load**
 
 Run: `ls -lh web/public/assets/harmonic_actuator_v2.glb`; `npm run build`; `npm run preview`.
-Expected: record the GLB size. If > 6 MB, run `npx @gltf-transform/cli optimize web/public/assets/harmonic_actuator_v2.glb web/public/assets/harmonic_actuator_v2.glb --compress meshopt` and re-check; if still > 6 MB, reduce the CAD export tessellation (`linear_deflection` 0.05→0.1) and re-export. Do not change the manifest node names.
+Expected: record the GLB size. The raw CAD export is ~11.9 MB, so this step is mandatory. Run `npx @gltf-transform/cli optimize web/public/assets/harmonic_actuator_v2.glb web/public/assets/harmonic_actuator_v2.glb --compress meshopt` and re-check; if still > 6 MB, reduce the CAD export tessellation (`linear_deflection` 0.05→0.1) and re-export. Do not change the manifest node names.
 
 - [ ] **Step 2: Add the loading/error states**
 
