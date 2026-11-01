@@ -175,6 +175,11 @@ select {
   outline-offset: 2px;
 }
 
+.btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.38;
+}
+
 .btn.is-active {
   border-color: var(--copper);
   background: var(--copper);

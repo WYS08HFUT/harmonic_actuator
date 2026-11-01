@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
+import { Exploder } from './engine/exploder.ts';
 import { loadActuator } from './engine/loadActuator.ts';
 import './style.css';
 
@@ -10,8 +11,25 @@ const loadingBar = document.querySelector<HTMLDivElement>('#loading-bar');
 const loadingPercent = document.querySelector<HTMLSpanElement>('#loading-percent');
 const errorPanel = document.querySelector<HTMLDivElement>('#error');
 const errorMessage = document.querySelector<HTMLParagraphElement>('#error-message');
+const explodeInput = document.querySelector<HTMLInputElement>('#explode');
+const explodeValue = document.querySelector<HTMLOutputElement>('#explode-value');
+const driveButton = document.querySelector<HTMLButtonElement>('#btn-drive');
+const cutButton = document.querySelector<HTMLButtonElement>('#btn-cut');
+const resetButton = document.querySelector<HTMLButtonElement>('#btn-reset');
 
-if (!container || !loading || !loadingBar || !loadingPercent || !errorPanel || !errorMessage) {
+if (
+  !container ||
+  !loading ||
+  !loadingBar ||
+  !loadingPercent ||
+  !errorPanel ||
+  !errorMessage ||
+  !explodeInput ||
+  !explodeValue ||
+  !driveButton ||
+  !cutButton ||
+  !resetButton
+) {
   throw new Error('Page shell is missing required elements');
 }
 
@@ -93,7 +111,27 @@ floor.position.y = -0.6;
 scene.add(floor);
 
 let loadedBounds: THREE.Box3 | null = null;
+let exploder: Exploder | null = null;
 let hasInteracted = false;
+let autoFit = false;
+
+interface GhostState {
+  material: THREE.Material;
+  transparent: boolean;
+  opacity: number;
+  depthWrite: boolean;
+}
+
+let ghostStates: GhostState[] = [];
+
+const setHousingGhost = (on: boolean) => {
+  for (const state of ghostStates) {
+    state.material.transparent = on ? true : state.transparent;
+    state.material.opacity = on ? 0.18 : state.opacity;
+    state.material.depthWrite = on ? false : state.depthWrite;
+    state.material.needsUpdate = true;
+  }
+};
 
 const setLoading = (fraction: number) => {
   const percent = Math.round(Math.max(0, Math.min(1, fraction)) * 100);
@@ -118,26 +156,57 @@ const showError = (error: unknown) => {
   errorMessage.textContent = error instanceof Error ? error.message : String(error);
 };
 
-const frameModel = (bounds: THREE.Box3) => {
+interface Framing {
+  position: THREE.Vector3;
+  target: THREE.Vector3;
+  distance: number;
+}
+
+const framingForBounds = (bounds: THREE.Box3, margin = 1.85): Framing => {
   const size = bounds.getSize(new THREE.Vector3());
   const center = bounds.getCenter(new THREE.Vector3());
   const fov = THREE.MathUtils.degToRad(camera.fov);
   const fitHeight = size.y / 2 / Math.tan(fov / 2);
   const fitWidth = size.x / 2 / Math.tan(fov / 2) / camera.aspect;
-  const distance = Math.max(fitHeight, fitWidth) * 1.85;
+  const distance = Math.max(fitHeight, fitWidth) * margin;
   const direction = new THREE.Vector3(0.92, 0.42, 1.08).normalize();
   const target = center.clone();
   target.y += size.y * 0.015;
+  return {
+    position: target.clone().addScaledVector(direction, distance),
+    target,
+    distance,
+  };
+};
 
-  camera.position.copy(target).addScaledVector(direction, distance);
-  controls.target.copy(target);
-  controls.minDistance = distance * 0.42;
-  controls.maxDistance = distance * 2.3;
+const frameModel = (bounds: THREE.Box3) => {
+  const framing = framingForBounds(bounds);
+  camera.position.copy(framing.position);
+  controls.target.copy(framing.target);
+  controls.minDistance = framing.distance * 0.42;
+  controls.maxDistance = framing.distance * 2.3;
   controls.update();
 
-  key.target.position.copy(center);
+  key.target.position.copy(framing.target);
   key.target.updateMatrixWorld();
   floor.position.y = bounds.min.y - 0.6;
+};
+
+const updateAutoFit = (dt: number) => {
+  if (!autoFit || !exploder) return;
+  const framing = framingForBounds(exploder.boundsAt(exploder.progress), 1.5);
+  const alpha = 1 - Math.exp(-4.5 * dt);
+  camera.position.lerp(framing.position, alpha);
+  controls.target.lerp(framing.target, alpha);
+  controls.update();
+  key.target.position.copy(framing.target);
+  key.target.updateMatrixWorld();
+};
+
+const updateExplodeUI = (percent: number) => {
+  const value = Math.max(0, Math.min(100, percent));
+  explodeValue.textContent = `${Math.round(value)}%`;
+  explodeInput.style.setProperty('--val', `${value}%`);
 };
 
 const boot = async () => {
@@ -157,6 +226,26 @@ const boot = async () => {
     });
 
     loadedBounds = loaded.bounds.clone();
+    exploder = new Exploder(loaded.parts, loaded.maxOrder, reduceMotion);
+
+    const ghostNodes = new Set([
+      'Body_Housing',
+      'Rear_End_Bell',
+      'Rear_Cover',
+      'Output_Cap_Mount_Flange',
+    ]);
+    ghostStates = loaded.parts
+      .filter((part) => ghostNodes.has(part.spec.node))
+      .flatMap((part) =>
+        part.allMaterials.map((material) => ({
+          material,
+          transparent: material.transparent,
+          opacity: material.opacity,
+          depthWrite: material.depthWrite,
+        })),
+      );
+
+    updateExplodeUI(0);
     frameModel(loadedBounds);
     finishLoading();
   } catch (error) {
@@ -168,14 +257,44 @@ const clock = new THREE.Clock();
 
 const animate = () => {
   requestAnimationFrame(animate);
-  clock.getDelta();
-  controls.autoRotate = !reduceMotion && !hasInteracted;
+  const dt = Math.min(clock.getDelta(), 0.05);
+  exploder?.update(dt);
+  updateAutoFit(dt);
+  controls.autoRotate = !reduceMotion && !hasInteracted && !autoFit;
   controls.update();
   renderer.render(scene, camera);
 };
 
+explodeInput.addEventListener('input', () => {
+  const percent = Number(explodeInput.value);
+  updateExplodeUI(percent);
+  exploder?.setProgress(percent / 100);
+  autoFit = true;
+  controls.autoRotate = false;
+  document.body.classList.toggle('is-exploding', percent > 1);
+  setHousingGhost(percent > 35);
+  const blocked = percent > 5;
+  driveButton.disabled = blocked;
+  cutButton.disabled = blocked;
+});
+
+resetButton.addEventListener('click', () => {
+  exploder?.setProgress(0);
+  explodeInput.value = '0';
+  updateExplodeUI(0);
+  autoFit = false;
+  hasInteracted = false;
+  controls.autoRotate = !reduceMotion;
+  driveButton.disabled = false;
+  cutButton.disabled = false;
+  document.body.classList.remove('is-exploding');
+  setHousingGhost(false);
+  if (loadedBounds) frameModel(loadedBounds);
+});
+
 controls.addEventListener('start', () => {
   hasInteracted = true;
+  autoFit = false;
   controls.autoRotate = false;
 });
 
@@ -186,7 +305,7 @@ const onResize = () => {
   renderer.setSize(width, height);
   camera.aspect = width / height;
   camera.updateProjectionMatrix();
-  if (loadedBounds && !hasInteracted) frameModel(loadedBounds);
+  if (loadedBounds && !hasInteracted && !autoFit) frameModel(loadedBounds);
 };
 
 window.addEventListener('resize', onResize);
