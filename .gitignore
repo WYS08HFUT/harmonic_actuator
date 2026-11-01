@@ -1,0 +1,11 @@
+__pycache__/
+*.pyc
+web/node_modules/
+.superpowers/
+previews/
+legacy_output/
+models/harmonic_actuator_assembly.*
+models/harmonic_actuator_cutaway.*
+models/mesh_assembly.step
+models/mesh_cutaway.stl
+drawings/harmonic_actuator_cad_blueprint.png
