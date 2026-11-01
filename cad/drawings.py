@@ -41,11 +41,20 @@ def _text(x, y, s, size=4.4, fill="#1F2328", weight="400", anchor="start"):
     )
 
 
-def _label(r, z, tx, ty, s, color="#1F2328"):
+def _label(r, z, tx, ty, s, color="#1F2328", lane=None):
+    """Leader label; with a lane it routes orthogonally instead of cutting across."""
+    x0, y0 = _x(r), _y(z)
+    if lane is None:
+        points = f"{x0:.2f},{y0:.2f} {tx-2:.2f},{ty-1.2:.2f}"
+    else:
+        points = (
+            f"{x0:.2f},{y0:.2f} {lane:.2f},{y0:.2f} "
+            f"{lane:.2f},{ty:.2f} {tx-2:.2f},{ty:.2f}"
+        )
     return (
-        f'<line x1="{_x(r):.2f}" y1="{_y(z):.2f}" x2="{tx-2:.2f}" y2="{ty-1.2:.2f}" '
-        f'stroke="{color}" stroke-width="0.3" stroke-dasharray="1.2 1.2"/>'
-        f'<circle cx="{_x(r):.2f}" cy="{_y(z):.2f}" r="0.7" fill="{color}"/>'
+        f'<polyline points="{points}" fill="none" stroke="#8A857C" '
+        f'stroke-width="0.3" stroke-dasharray="1 1" stroke-linejoin="round"/>'
+        f'<circle cx="{x0:.2f}" cy="{y0:.2f}" r="0.7" fill="{color}"/>'
         + _text(tx, ty, s, 4.2, color)
     )
 
@@ -143,20 +152,33 @@ def _svg(teaching: bool) -> str:
     p.append(_rect(46, 50, 114, 120, "#FBFAF7", 1.0, "none", 0))  # M4
     p.append(_rect(53, 57, 112, 120, "#FBFAF7", 1.0, "none", 0))  # M3
 
-    # labels
-    p.append(_label(50, 40, 112, 32, "散热壳体 Ø110 / 法兰 Ø118"))
-    p.append(_label(40, 30, 112, 40, "无框电机定子 + 铜绕组"))
-    p.append(_label(31, 30, 112, 48, "转子磁钢 + 碳纤维护套"))
-    p.append(_label(12, 34, 112, 56, "空心输入轴 Ø20"))
-    p.append(_label(20, 6.5, 112, 64, "输入端绝对值编码器"))
-    p.append(_label(47, 100, 112, 72, "交叉滚子轴承 RB7013"))
-    p.append(_label(32, 67, 112, 80, "刚轮 Zc=102 · i=50:1"))
-    p.append(_label(fs_tip, 78, 112, 88, "柔轮 Zf=100"))
-    p.append(_label(15, 67, 112, 96, "波发生器（椭圆）"))
-    p.append(_label(35, 116, 112, 104, "输出法兰 Ø82 · PCD Ø64"))
-    p.append(_label(45, 109, 112, 112, "输出端绝对值编码器"))
-    p.append(_label(55, 116, 112, 120, "输出盖 Ø118 · 8×M4 PCD96"))
-    p.append(_label(48, 114, 112, 128, "输出止口 Ø42 · 总长 122"))
+    # labels, ordered by anchor height so the orthogonal leaders do not cross
+    label_rows = [
+        (55, 116, "输出盖 Ø118 · 8×M4 PCD96"),
+        (35, 116, "输出法兰 Ø82 · PCD Ø64"),
+        (48, 114, "输出止口 Ø42 · 总长 122"),
+        (45, 109, "输出端绝对值编码器"),
+        (47, 100, "交叉滚子轴承 RB7013"),
+        (fs_tip, 78, "柔轮 Zf=100"),
+        (32, 67, "刚轮 Zc=102 · i=50:1"),
+        (15, 67, "波发生器（椭圆）"),
+        (50, 40, "散热壳体 Ø110 / 法兰 Ø118"),
+        (12, 34, "空心输入轴 Ø20"),
+        (40, 30, "无框电机定子 + 铜绕组"),
+        (31, 30, "转子磁钢 + 碳纤维护套"),
+        (20, 6.5, "输入端绝对值编码器"),
+    ]
+    for index, (r, z, text) in enumerate(label_rows):
+        p.append(
+            _label(
+                r,
+                z,
+                112,
+                32 + index * 8,
+                text,
+                lane=94 + index * 1.25,
+            )
+        )
 
     # dimensions
     p.append(_text(30, 171.5, "Ø110 机身 / Ø118 安装法兰", 3.6, "#5B6B7A"))
