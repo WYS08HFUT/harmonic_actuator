@@ -3,6 +3,11 @@ from cadgen.geometry import closest_points, overlap_volume
 
 from cad.params import DEFAULT
 from cad.parts_body import build_body_housing
+from cad.parts_harmonic import (
+    build_circular_spline,
+    build_flexspline,
+    build_wave_generator,
+)
 from cad.parts_motor import (
     build_carbon_sleeve,
     build_front_bearing,
@@ -203,8 +208,65 @@ def check_body() -> None:
     print("PASS body")
 
 
+def check_harmonic() -> None:
+    p = DEFAULT
+    cs = build_circular_spline(p)
+    assert cs.label == "Circular_Spline_Ring"
+    assert len(cs.solids()) == 1
+    cbb = cs.bounding_box()
+    assert abs(cbb.size.X - 76.0) < 1e-6 and abs(cbb.size.Y - 76.0) < 1e-6
+    assert abs(cbb.min.Z - 60.0) < 1e-6 and abs(cbb.max.Z - 74.0) < 1e-6
+    cs_bore = bd.Cylinder(25.0, 14.0, align=(bd.Align.CENTER, bd.Align.CENTER, bd.Align.MIN))
+    cs_bore = cs_bore.moved(bd.Location((0.0, 0.0, 60.0)))
+    assert overlap_volume(cs, cs_bore) < 1e-6
+
+    fs = build_flexspline(p)
+    assert fs.label == "Flexspline_Cup"
+    assert len(fs.solids()) == 1
+    fbb = fs.bounding_box()
+    assert abs(fbb.size.X - 51.0) < 1e-6 and abs(fbb.size.Y - 51.0) < 1e-6
+    assert abs(fbb.min.Z - 61.0) < 1e-6 and abs(fbb.max.Z - 87.0) < 1e-6
+    fs_bore = bd.Cylinder(23.525, 0.2, align=(bd.Align.CENTER, bd.Align.CENTER, bd.Align.MIN))
+    fs_bore = fs_bore.moved(bd.Location((0.0, 0.0, 66.9)))
+    assert overlap_volume(fs, fs_bore) < 1e-6
+
+    wg = build_wave_generator(p)
+    assert wg.label == "Wave_Generator_Assembly"
+    assert len(wg.children) == 3
+    wlabels = {child.label for child in wg.children}
+    assert wlabels == {
+        "Wave_Generator_Cam",
+        "Wave_Generator_Balls",
+        "Wave_Generator_Flexible_Race",
+    }
+    race = next(c for c in wg.children if c.label == "Wave_Generator_Flexible_Race")
+    cam = next(c for c in wg.children if c.label == "Wave_Generator_Cam")
+    balls = next(c for c in wg.children if c.label == "Wave_Generator_Balls")
+    rbb = race.bounding_box()
+    assert rbb.size.X <= 46.65 + 1e-6, rbb.size.X
+    assert rbb.size.X > 46.0 and rbb.size.Y > 44.0
+    assert abs(rbb.min.Z - 61.0) < 1e-6 and abs(rbb.max.Z - 73.0) < 1e-6
+    assert len(cam.solids()) == 1
+    assert len(balls.solids()) == 18
+    gap = closest_points(race, fs).distance
+    assert gap >= 0.2 - 1e-6, gap
+
+    # Tooth phase: at 0° an FS tooth sits in a CS space (no overlap);
+    # at 90° an FS tooth lines up with a CS tooth (overlap).
+    wedge0 = bd.Box(4.0, 0.2, 0.2, align=(bd.Align.CENTER, bd.Align.CENTER, bd.Align.CENTER))
+    wedge0 = wedge0.moved(bd.Location((25.5, 0.0, 67.0)))
+    wedge90 = bd.Box(4.0, 0.2, 0.2, align=(bd.Align.CENTER, bd.Align.CENTER, bd.Align.CENTER))
+    wedge90 = wedge90.moved(bd.Location((0.0, 25.5, 67.0)))
+    ov0 = overlap_volume(fs & wedge0, cs & wedge0)
+    ov90 = overlap_volume(fs & wedge90, cs & wedge90)
+    assert ov0 < 1e-4, ov0
+    assert ov90 > 1e-4, ov90
+    print("PASS harmonic")
+
+
 if __name__ == "__main__":
     check_params()
     check_rear()
     check_motor()
     check_body()
+    check_harmonic()
