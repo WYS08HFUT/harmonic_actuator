@@ -79,10 +79,10 @@ def build_rear_end_bell(p: ActuatorParams) -> bd.Part:
         with Locations((0, 0, 9.0)):
             Cylinder(55.0, 1.0, align=(C, C, MIN))
             Cylinder(32.0, 1.0, align=(C, C, MIN), mode=Mode.SUBTRACT)
-        # Bearing boss r21..33 at Z9–17; overlaps the web r32..33 so it fuses
-        with Locations((0, 0, 9.0)):
-            Cylinder(33.0, 8.0, align=(C, C, MIN))
-            Cylinder(21.0, 8.0, align=(C, C, MIN), mode=Mode.SUBTRACT)
+        # Bearing boss r21..33 at Z9.5–17; overlaps the web r32..33 so it fuses
+        with Locations((0, 0, 9.5)):
+            Cylinder(33.0, 7.5, align=(C, C, MIN))
+            Cylinder(21.0, 7.5, align=(C, C, MIN), mode=Mode.SUBTRACT)
         # Four cover-screw posts at PCD50, clocked 45° away from the PCB
         with Locations((0, 0, 3.0)):
             with PolarLocations(25.0, 4, start_angle=45.0):

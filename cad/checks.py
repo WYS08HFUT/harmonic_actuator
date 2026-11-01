@@ -1,8 +1,15 @@
 import math
+from collections import Counter
 
 import build123d as bd
 from cadgen.geometry import closest_points, overlap_volume
 
+from cad.assembly import (
+    PART_LABELS,
+    ROTATION_GROUPS,
+    build_assembly,
+    build_cutaway,
+)
 from cad.params import DEFAULT
 from cad.parts_body import build_body_housing
 from cad.parts_harmonic import (
@@ -359,6 +366,112 @@ def check_output() -> None:
     print("PASS output")
 
 
+def _bbox_touch(a: bd.Shape, b: bd.Shape, tol: float = 0.5) -> bool:
+    ba = a.bounding_box()
+    bb = b.bounding_box()
+    return not (
+        ba.max.X < bb.min.X - tol
+        or ba.min.X > bb.max.X + tol
+        or ba.max.Y < bb.min.Y - tol
+        or ba.min.Y > bb.max.Y + tol
+        or ba.max.Z < bb.min.Z - tol
+        or ba.min.Z > bb.max.Z + tol
+    )
+
+
+def _labels(obj: bd.Shape) -> list[str]:
+    out = [obj.label]
+    for child in getattr(obj, "children", []):
+        out.extend(_labels(child))
+    return out
+
+
+def check_assembly() -> None:
+    p = DEFAULT
+    assy = build_assembly(p)
+    assert assy.label == "HA_110_Actuator"
+    abb = assy.bounding_box()
+    assert abb.size.X <= 118.01, abb.size.X
+    assert abb.size.Y <= 118.01, abb.size.Y
+    assert abb.size.Z <= 122.01, abb.size.Z
+
+    bore = bd.Cylinder(10.0, 124.0, align=(bd.Align.CENTER, bd.Align.CENTER, bd.Align.MIN))
+    bore = bore.moved(bd.Location((0.0, 0.0, -1.0)))
+    assert overlap_volume(assy, bore) < 1.0
+
+    counts = Counter(_labels(assy))
+    for label in PART_LABELS:
+        assert counts[label] == 1, (label, counts[label])
+    assert set(ROTATION_GROUPS) == set(PART_LABELS)
+    assert set(ROTATION_GROUPS.values()) <= {"static", "input", "output", "half_speed"}
+
+    top = {child.label: child for child in assy.children}
+    excluded = {
+        frozenset(("Circular_Spline_Ring", "Flexspline_Cup")),
+        frozenset(("Frameless_Stator_Core", "Copper_Stator_Windings")),
+        frozenset(("Wave_Generator_Assembly", "Flexspline_Cup")),
+    }
+    labels = sorted(top)
+    for i, a in enumerate(labels):
+        for b in labels[i + 1 :]:
+            if frozenset((a, b)) in excluded:
+                continue
+            if not _bbox_touch(top[a], top[b]):
+                continue
+            ov = overlap_volume(top[a], top[b])
+            assert ov < 1e-3, (a, b, ov)
+
+    cs = top["Circular_Spline_Ring"]
+    fs = top["Flexspline_Cup"]
+    wg = top["Wave_Generator_Assembly"]
+    crb = top["Cross_Roller_Bearing_Assembly"]
+    body = top["Body_Housing"]
+    of = top["Output_Flange"]
+    assert closest_points(cs, fs).distance < 1e-3
+    assert overlap_volume(wg, fs) < 5.0
+    c_outer = next(c for c in crb.children if c.label == "Cross_Roller_Outer_Race")
+    c_inner = next(c for c in crb.children if c.label == "Cross_Roller_Inner_Race")
+    c_cage = next(c for c in crb.children if c.label == "Cross_Roller_Cage")
+    assert closest_points(c_cage, c_outer).distance < 0.01
+    assert closest_points(c_cage, c_inner).distance < 0.01
+    assert overlap_volume(c_cage, c_outer) < 5.0
+    assert overlap_volume(c_cage, c_inner) < 5.0
+
+    crb_path = bd.Cylinder(50.0, 19.0, align=(bd.Align.CENTER, bd.Align.CENTER, bd.Align.MIN))
+    crb_path = crb_path.moved(bd.Location((0.0, 0.0, 93.0)))
+    assert overlap_volume(body, crb_path) < 1e-6
+    stator_path = bd.Cylinder(46.0, 41.0, align=(bd.Align.CENTER, bd.Align.CENTER, bd.Align.MIN))
+    stator_path = stator_path.moved(bd.Location((0.0, 0.0, 10.0)))
+    assert overlap_volume(body, stator_path) < 1e-6
+
+    assert closest_points(of, cs).distance >= 2.0
+    assert closest_points(fs, of).distance < 1e-3
+    fs_hub = fs & bd.Box(80.0, 80.0, 5.0, align=(bd.Align.CENTER, bd.Align.CENTER, bd.Align.MIN)).moved(
+        bd.Location((0.0, 0.0, 82.0))
+    )
+    assert closest_points(fs_hub, cs).distance >= 2.0
+
+    for label in (
+        "Body_Housing",
+        "Output_Flange",
+        "Rear_End_Bell",
+        "Output_Cap_Mount_Flange",
+        "Flexspline_Cup",
+        "Circular_Spline_Ring",
+        "Rotor_Hub",
+        "Frameless_Stator_Core",
+    ):
+        assert len(top[label].solids()) == 1, label
+
+    cut = build_cutaway(p)
+    assert cut.label == "HA_110_Actuator_Cutaway"
+    cut_labels = set(_labels(cut))
+    assert {"Flexspline_Cup", "Wave_Generator_Assembly", "Output_Flange", "Body_Housing"} <= cut_labels
+    cut_body = next(c for c in cut.children if c.label == "Body_Housing")
+    assert cut_body.volume < body.volume
+    print("PASS assembly")
+
+
 if __name__ == "__main__":
     check_params()
     check_rear()
@@ -366,3 +479,4 @@ if __name__ == "__main__":
     check_body()
     check_harmonic()
     check_output()
+    check_assembly()
