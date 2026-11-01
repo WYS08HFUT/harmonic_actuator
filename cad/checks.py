@@ -2,6 +2,7 @@ import build123d as bd
 from cadgen.geometry import closest_points, overlap_volume
 
 from cad.params import DEFAULT
+from cad.parts_body import build_body_housing
 from cad.parts_motor import (
     build_carbon_sleeve,
     build_front_bearing,
@@ -171,7 +172,39 @@ def check_motor() -> None:
     print("PASS motor")
 
 
+def check_body() -> None:
+    p = DEFAULT
+    body = build_body_housing(p)
+    assert body.label == "Body_Housing"
+    assert len(body.solids()) == 1
+    bb = body.bounding_box()
+    assert abs(bb.min.Z - 10.0) < 1e-6
+    assert abs(bb.max.Z - 112.0) < 1e-6
+    sx, sy = _slice_size(body, 50.0)
+    assert abs(sx - 110.0) < 0.05 and abs(sy - 110.0) < 0.05
+    sx, sy = _slice_size(body, 107.0)
+    assert abs(sx - 118.0) < 0.05 and abs(sy - 118.0) < 0.05
+
+    axis = bd.Cylinder(10.0, 102.0, align=(bd.Align.CENTER, bd.Align.CENTER, bd.Align.MIN))
+    axis = axis.moved(bd.Location((0.0, 0.0, 10.0)))
+    assert overlap_volume(body, axis) < 1e-6
+
+    probes = [
+        (10.5, 46.0),
+        (51.5, 21.0),
+        (60.5, 38.0),
+        (93.5, 50.0),
+        (106.5, 51.0),
+    ]
+    for z, r in probes:
+        probe = bd.Cylinder(r, 0.2, align=(bd.Align.CENTER, bd.Align.CENTER, bd.Align.MIN))
+        probe = probe.moved(bd.Location((0.0, 0.0, z - 0.1)))
+        assert overlap_volume(body, probe) < 1e-6, (z, r)
+    print("PASS body")
+
+
 if __name__ == "__main__":
     check_params()
     check_rear()
     check_motor()
+    check_body()
