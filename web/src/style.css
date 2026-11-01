@@ -877,3 +877,79 @@ input[type='range']::-moz-range-thumb {
     animation-duration: 0.001ms !important;
   }
 }
+
+/* Mobile narrative, disclaimer, and zoomable section figure */
+.mobile-intro,
+.console-fineprint {
+  display: none;
+}
+
+.diagram-figure {
+  overflow: hidden;
+  touch-action: none;
+}
+
+#diagram-static {
+  transform-origin: center;
+  will-change: transform;
+  user-select: none;
+  -webkit-user-drag: none;
+}
+
+@media (max-width: 760px) {
+  .mobile-intro {
+    position: fixed;
+    top: 62px;
+    left: 10px;
+    right: 10px;
+    z-index: 25;
+    display: block;
+    padding: 10px 12px;
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    background: rgba(255, 255, 255, 0.92);
+    backdrop-filter: blur(8px);
+    font-size: 12px;
+  }
+
+  .mobile-intro summary {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 8px;
+    cursor: pointer;
+    list-style: none;
+  }
+
+  .mobile-intro summary::-webkit-details-marker {
+    display: none;
+  }
+
+  .mobile-intro summary span {
+    color: var(--muted);
+    font-size: 10px;
+  }
+
+  .mobile-intro-body {
+    padding-top: 8px;
+    color: var(--muted);
+    line-height: 1.55;
+  }
+
+  .mobile-intro-body p {
+    margin: 0 0 6px;
+  }
+
+  .console-fineprint {
+    display: block;
+    margin: 0 0 8px;
+    color: var(--muted);
+    font-size: 10px;
+    text-align: center;
+  }
+
+  .diagram-inset {
+    width: min(340px, 100%);
+    align-self: center;
+  }
+}

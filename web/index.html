@@ -36,6 +36,15 @@
       </div>
     </header>
 
+    <details id="mobile-intro" class="mobile-intro">
+      <summary><strong>为什么这样设计</strong><span>空间 · 传动 · 控制</span></summary>
+      <div class="mobile-intro-body">
+        <p><strong>空间</strong> 电机、减速器、轴承、编码器同轴叠进 Ø110 机身，中间留 Ø20 走线孔。</p>
+        <p><strong>传动</strong> 无框电机直驱波发生器，柔轮 100 齿 / 刚轮 102 齿，齿差 2 齿，基准 50:1。</p>
+        <p><strong>控制</strong> 输入/输出双绝对值编码，交叉滚子轴承承担弯矩，上电即知关节位置。</p>
+      </div>
+    </details>
+
     <aside class="intro" aria-label="为什么这样设计">
       <p class="eyebrow">WHY THIS DESIGN</p>
       <h1>为什么这样设计</h1>
@@ -80,6 +89,7 @@
     </aside>
 
     <footer class="console" aria-label="视图控制">
+      <p class="console-fineprint">结构原理示意，最终参数以正式规格书为准。</p>
       <div class="console-main">
         <div class="explode-control">
           <label for="explode">拆解</label>
@@ -104,9 +114,9 @@
           <output id="ratio-value" for="ratio">50:1</output>
         </div>
         <div class="drive-readout">
-          <span>输出</span>
+          <span>输出 · 反向</span>
           <strong id="output-rpm">20.0 rpm</strong>
-          <em>演示慢放 ×1/20 · 变形放大 2.5×</em>
+          <em>演示慢放 ×1/20</em>
         </div>
       </div>
     </footer>
@@ -148,7 +158,7 @@
               <canvas id="diagram-canvas"></canvas>
             </div>
             <p class="diagram-side-note">
-              上部为长轴附近齿部的实时局部放大：柔轮齿逐个进入刚轮齿槽，短轴处脱开。齿部按安装变形状态示意，壳体外廓为严格投影；3D 柔轮变形放大 2.5×。
+              上部为长轴附近齿部的实时局部放大：柔轮齿逐个进入刚轮齿槽，短轴处脱开。齿部按安装变形状态示意，壳体外廓为严格投影；3D 与放大窗均按真实径向变形显示。
             </p>
           </aside>
         </div>

@@ -41,6 +41,22 @@ test('update advances the wave at visual scale and the output backwards', () => 
   close(balls.rotation.z, expectedWave / 2);
 });
 
+test('updates every flexspline material with the local wave phase', () => {
+  const first = new THREE.MeshStandardMaterial();
+  const second = new THREE.MeshStandardMaterial();
+  first.userData.flexUniforms = { uFlexPsi: { value: 0 } };
+  second.userData.flexUniforms = { uFlexPsi: { value: 0 } };
+
+  const drive = new Drive({ input: [], output: [], flexMaterials: [first, second] });
+  drive.setRatio(50);
+  drive.setInputRpm(1000);
+  drive.update(1);
+
+  const expected = drive.waveAngle - drive.outputAngle;
+  assert.equal(first.userData.flexUniforms.uFlexPsi.value, expected);
+  assert.equal(second.userData.flexUniforms.uFlexPsi.value, expected);
+});
+
 test('stopping the input preserves the accumulated angles', () => {
   const output = new THREE.Object3D();
   const drive = new Drive({ input: [], output: [output] });

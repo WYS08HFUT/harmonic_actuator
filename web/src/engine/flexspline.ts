@@ -2,12 +2,6 @@ import * as THREE from 'three';
 import { GEAR_STATIONS } from './harmonicGears.ts';
 import type { GearParams } from './harmonicGears.ts';
 
-/**
- * The real radial strain is only ~2% of the radius, which is invisible at
- * screen scale. The live view amplifies it for teaching; the caption says so.
- */
-export const FLEX_VISUAL_GAIN = 2.5;
-
 const clamp01 = (value: number): number => Math.min(1, Math.max(0, value));
 
 /**
@@ -58,7 +52,7 @@ export function makeFlexMaterial(
 
   const uniforms: FlexUniforms = {
     uFlexPsi: { value: 0 },
-    uFlexModule: { value: params.module * FLEX_VISUAL_GAIN },
+    uFlexModule: { value: params.module },
     uFlexRimZ: { value: GEAR_STATIONS.fsTeeth[1] },
     uFlexDiaphragmZ: { value: GEAR_STATIONS.fsWall[1] },
   };

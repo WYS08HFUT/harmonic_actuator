@@ -62,6 +62,9 @@ try {
   if (hiddenControl) throw new Error(`control not visible: ${JSON.stringify(hiddenControl)}`);
   console.log('shell check', JSON.stringify({ canvas: shell.canvas, controls: shell.controls.length }));
 
+  const shadows = await page.evaluate(() => window.__ha.shadows());
+  if (shadows !== false) throw new Error('real-time shadows are still enabled');
+
   await page.keyboard.press('Tab');
   await wait(900);
   const tabState = await page.evaluate(() => ({
@@ -131,6 +134,22 @@ try {
   }
   console.log('gear check', JSON.stringify({ ratio: gear50.ratio, zf: gear50.zf, zc: gear50.zc, pickMeshes: gear50.pickMeshes }));
 
+  const gearCamera = await page.evaluate(() => {
+    const cam = window.__ha.camera();
+    const dx = cam.position[0] - cam.target[0];
+    const dy = cam.position[1] - cam.target[1];
+    const dz = cam.position[2] - cam.target[2];
+    const distance = Math.hypot(dx, dy, dz);
+    return {
+      distance,
+      angleFromAxis: (Math.acos(Math.abs(dy) / distance) * 180) / Math.PI,
+    };
+  });
+  if (gearCamera.distance > 160 || gearCamera.angleFromAxis > 30) {
+    throw new Error(`gear camera is not a close axial view: ${JSON.stringify(gearCamera)}`);
+  }
+  console.log('gear camera', JSON.stringify(gearCamera));
+
   const flexA = await page.evaluate(() => window.__ha.drive());
   await wait(600);
   const flexB = await page.evaluate(() => window.__ha.drive());
@@ -192,12 +211,18 @@ try {
   }
   console.log('drive 30', JSON.stringify({ outputRpm: rpm30.trim() }));
   await shot('drive-30');
-  await page.evaluate(() => {
-    const slider = document.querySelector('#ratio');
-    slider.value = '50';
-    slider.dispatchEvent(new Event('input', { bubbles: true }));
-  });
-  await wait(500);
+
+  const readoutLabel = await page.$eval('.drive-readout', (element) => element.textContent ?? '');
+  if (!readoutLabel.includes('反向')) throw new Error('output direction is not labeled');
+  await page.evaluate(() => window.__ha.setInputRpm(500));
+  await wait(300);
+  await page.click('#btn-reset');
+  await wait(1000);
+  const defaults = await page.evaluate(() => window.__ha.drive());
+  if (defaults.ratio !== 50 || defaults.inputRpm !== 1000 || Math.abs(defaults.outputRpm - 20) > 0.01) {
+    throw new Error(`reset did not restore defaults: ${JSON.stringify(defaults)}`);
+  }
+  console.log('reset defaults', JSON.stringify({ ratio: defaults.ratio, inputRpm: defaults.inputRpm }));
 
   await page.click('#btn-view-output');
   await wait(1100);
@@ -231,12 +256,48 @@ try {
   }
   console.log('diagram check', JSON.stringify({ open: diagram.open, live: true }));
   await shot('diagram');
+
+  const figure = await page.$('.diagram-figure');
+  const figureBox = await figure.boundingBox();
+  if (!figureBox) throw new Error('diagram figure has no box');
+  await page.mouse.move(figureBox.x + figureBox.width / 2, figureBox.y + figureBox.height / 2);
+  await page.mouse.wheel({ deltaY: -300 });
+  await wait(250);
+  const zoomTransform = await page.$eval(
+    '#diagram-static',
+    (element) => getComputedStyle(element).transform,
+  );
+  if (zoomTransform === 'none' || zoomTransform.startsWith('matrix(1, 0, 0, 1')) {
+    throw new Error(`diagram did not zoom: ${zoomTransform}`);
+  }
+  console.log('diagram zoom', zoomTransform);
+
   await page.keyboard.press('Escape');
   await wait(300);
   const closed = await page.evaluate(() => window.__ha.diagram());
   if (closed.open || closed.canvasVisible) {
     throw new Error(`Escape did not close the diagram: ${JSON.stringify(closed)}`);
   }
+
+  await page.evaluate(() => {
+    const slider = document.querySelector('#explode');
+    slider.value = '50';
+    slider.dispatchEvent(new Event('input', { bubbles: true }));
+  });
+  await wait(700);
+  await page.evaluate(() => {
+    const slider = document.querySelector('#explode');
+    slider.value = '0';
+    slider.dispatchEvent(new Event('input', { bubbles: true }));
+  });
+  await wait(700);
+  const restoreOpacity = await page.evaluate(() => window.__ha.materialOpacity('Body_Housing'));
+  if (!restoreOpacity.length || restoreOpacity.some((value) => Math.abs(value - 0.2) > 1e-6)) {
+    throw new Error(`transmission ghost was not restored at 0%: ${JSON.stringify(restoreOpacity)}`);
+  }
+  const restoredDrive = await page.evaluate(() => window.__ha.drive());
+  if (restoredDrive.paused) throw new Error('drive stayed paused after explode returned to 0');
+  console.log('explode restore', JSON.stringify({ opacity: restoreOpacity[0] }));
 
   await page.setViewport({ width: 390, height: 844, deviceScaleFactor: 2 });
   await page.reload({ waitUntil: 'networkidle0', timeout: 90_000 });
@@ -261,8 +322,35 @@ try {
   if (mobile.scrollWidth > mobile.viewport.width + 1) {
     throw new Error(`mobile horizontal overflow: ${JSON.stringify(mobile)}`);
   }
-  console.log('mobile check', JSON.stringify(mobile));
+  const mobileChrome = await page.evaluate(() => {
+    const intro = document.querySelector('#mobile-intro');
+    const fineprint = document.querySelector('.console-fineprint');
+    return {
+      intro: intro ? intro.getBoundingClientRect().width : 0,
+      disclaimer: fineprint ? fineprint.textContent?.trim() ?? '' : '',
+    };
+  });
+  if (mobileChrome.intro <= 0 || !mobileChrome.disclaimer.includes('结构原理示意')) {
+    throw new Error(`mobile narrative/disclaimer missing: ${JSON.stringify(mobileChrome)}`);
+  }
+  console.log('mobile chrome', JSON.stringify(mobileChrome));
   await shot('mobile');
+
+  await page.click('#btn-diagram');
+  await wait(800);
+  const mobileDiagram = await page.evaluate(() => {
+    const canvas = document.querySelector('#diagram-canvas');
+    return {
+      open: window.__ha.diagram().open,
+      width: canvas?.clientWidth ?? 0,
+    };
+  });
+  if (!mobileDiagram.open || mobileDiagram.width <= 0) {
+    throw new Error(`mobile diagram unusable: ${JSON.stringify(mobileDiagram)}`);
+  }
+  await shot('mobile-diagram');
+  await page.keyboard.press('Escape');
+  await wait(300);
 
   await page.setViewport({ width: 1440, height: 900, deviceScaleFactor: 1 });
   await page.emulateMediaFeatures([{ name: 'prefers-reduced-motion', value: 'reduce' }]);
@@ -293,6 +381,28 @@ try {
   await wait(700);
   await shot('reduced-motion');
   await page.keyboard.press('Escape');
+
+  const errorPage = await browser.newPage();
+  await errorPage.setRequestInterception(true);
+  errorPage.on('request', (request) => {
+    if (request.url().includes('.glb')) request.abort();
+    else request.continue();
+  });
+  await errorPage.goto(URL, { waitUntil: 'networkidle0', timeout: 90_000 });
+  await wait(1800);
+  const errorState = await errorPage.evaluate(() => {
+    const panel = document.querySelector('#error');
+    return {
+      hidden: panel?.hidden ?? true,
+      message: document.querySelector('#error-message')?.textContent ?? '',
+      retry: Boolean(panel?.querySelector('button')),
+    };
+  });
+  await errorPage.close();
+  if (errorState.hidden || !errorState.retry || !errorState.message) {
+    throw new Error(`load failure did not show the error panel: ${JSON.stringify(errorState)}`);
+  }
+  console.log('error state', JSON.stringify({ retry: errorState.retry }));
 
   if (errors.length) throw new Error(errors.join('\n'));
   console.log('visual check PASS');

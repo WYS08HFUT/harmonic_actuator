@@ -1,4 +1,3 @@
-import { FLEX_VISUAL_GAIN } from './flexspline.ts';
 import {
   externalToothHalfAngle,
   GEAR_COLORS,
@@ -310,14 +309,13 @@ export class MeshDiagram {
     const psi = this.state.waveAngle;
     const cx = 92;
     const cy = 286;
-    const scale = 58 / (p.csRootRadius + 3);
-    const gain = FLEX_VISUAL_GAIN;
+    const scale = 58 / p.csOuterRadius;
     const delta = (theta: number): number =>
-      p.module * gain * Math.cos(2 * (theta - psi));
+      p.module * Math.cos(2 * (theta - psi));
 
     // Circular spline annulus.
     ctx.beginPath();
-    ctx.arc(cx, cy, (p.csRootRadius + 3) * scale, 0, Math.PI * 2);
+    ctx.arc(cx, cy, p.csOuterRadius * scale, 0, Math.PI * 2);
     ctx.arc(cx, cy, p.csTipRadius * scale, 0, Math.PI * 2, true);
     ctx.fillStyle = COLORS.circular;
     ctx.fill('evenodd');
@@ -415,6 +413,6 @@ export class MeshDiagram {
       x,
       332,
     );
-    ctx.fillText('环形图变形放大 2.5×', x, 350);
+    ctx.fillText('径向变形与刚轮/波发生器同尺度', x, 350);
   }
 }

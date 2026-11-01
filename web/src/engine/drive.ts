@@ -12,7 +12,7 @@ export interface DriveGroups {
   output: THREE.Object3D[];
   cage?: THREE.Object3D[];
   halfSpeed?: THREE.Object3D[];
-  flexMaterial?: THREE.MeshStandardMaterial;
+  flexMaterials?: THREE.MeshStandardMaterial[];
 }
 
 export class Drive {
@@ -30,7 +30,7 @@ export class Drive {
       output: [...groups.output],
       cage: [...(groups.cage ?? [])],
       halfSpeed: [...(groups.halfSpeed ?? [])],
-      flexMaterial: groups.flexMaterial,
+      flexMaterials: [...(groups.flexMaterials ?? [])],
     };
     this.apply();
   }
@@ -43,8 +43,8 @@ export class Drive {
     if (Number.isFinite(ratio) && ratio > 0) this.ratio = ratio;
   }
 
-  setFlexMaterial(material: THREE.MeshStandardMaterial | undefined): void {
-    this.groups.flexMaterial = material;
+  setFlexMaterials(materials: THREE.MeshStandardMaterial[]): void {
+    this.groups.flexMaterials = [...materials];
     this.applyFlex();
   }
 
@@ -55,7 +55,7 @@ export class Drive {
       output: [...groups.output],
       cage: [...(groups.cage ?? [])],
       halfSpeed: [...(groups.halfSpeed ?? [])],
-      flexMaterial: groups.flexMaterial ?? this.groups.flexMaterial,
+      flexMaterials: groups.flexMaterials ?? this.groups.flexMaterials,
     };
     this.apply();
   }
@@ -78,7 +78,10 @@ export class Drive {
   }
 
   private applyFlex(): void {
-    if (!this.groups.flexMaterial) return;
-    updateFlexUniforms(this.groups.flexMaterial, this.waveAngle - this.outputAngle);
+    if (!this.groups.flexMaterials?.length) return;
+    const psi = this.waveAngle - this.outputAngle;
+    for (const material of this.groups.flexMaterials) {
+      updateFlexUniforms(material, psi);
+    }
   }
 }

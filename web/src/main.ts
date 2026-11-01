@@ -55,6 +55,8 @@ const diagramPanel = document.querySelector<HTMLDivElement>('#diagram-panel');
 const diagramClose = document.querySelector<HTMLButtonElement>('#diagram-close');
 const diagramCanvas = document.querySelector<HTMLCanvasElement>('#diagram-canvas');
 const diagramKicker = document.querySelector<HTMLParagraphElement>('#diagram-kicker');
+const diagramFigure = document.querySelector<HTMLDivElement>('.diagram-figure');
+const diagramImage = document.querySelector<HTMLImageElement>('#diagram-static');
 
 if (
   !container ||
@@ -94,7 +96,9 @@ if (
   !diagramPanel ||
   !diagramClose ||
   !diagramCanvas ||
-  !diagramKicker
+  !diagramKicker ||
+  !diagramFigure ||
+  !diagramImage
 ) {
   throw new Error('Page shell is missing required elements');
 }
@@ -114,8 +118,9 @@ renderer.toneMapping = THREE.ACESFilmicToneMapping;
 renderer.toneMappingExposure = 1.06;
 renderer.outputColorSpace = THREE.SRGBColorSpace;
 renderer.localClippingEnabled = true;
-renderer.shadowMap.enabled = true;
-renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+// No real-time shadow pass: the spec asks for a baked contact-shadow patch,
+// which is much cheaper on mobile.
+renderer.shadowMap.enabled = false;
 container.appendChild(renderer.domElement);
 
 const scene = new THREE.Scene();
@@ -134,7 +139,8 @@ controls.enableDamping = true;
 controls.dampingFactor = 0.07;
 controls.enablePan = false;
 controls.minPolarAngle = Math.PI * 0.08;
-controls.maxPolarAngle = Math.PI * 0.88;
+// Allow looking up from the motor end for the axial gear view.
+controls.maxPolarAngle = Math.PI * 0.98;
 controls.target.set(0, 58, 0);
 controls.autoRotate = !reduceMotion;
 controls.autoRotateSpeed = 0.3;
@@ -148,15 +154,6 @@ scene.add(new THREE.HemisphereLight(0xfdfbf6, 0xcfc8bc, 0.55));
 
 const key = new THREE.DirectionalLight(0xfff2e2, 3.2);
 key.position.set(220, 320, 190);
-key.castShadow = true;
-key.shadow.mapSize.set(2048, 2048);
-key.shadow.camera.left = -220;
-key.shadow.camera.right = 220;
-key.shadow.camera.top = 220;
-key.shadow.camera.bottom = -220;
-key.shadow.camera.near = 20;
-key.shadow.camera.far = 900;
-key.shadow.bias = -0.0002;
 scene.add(key);
 scene.add(key.target);
 
@@ -168,12 +165,32 @@ const rim = new THREE.DirectionalLight(0xffd9bd, 0.5);
 rim.position.set(-90, 240, -260);
 scene.add(rim);
 
+const contactCanvas = document.createElement('canvas');
+contactCanvas.width = 256;
+contactCanvas.height = 256;
+{
+  const context = contactCanvas.getContext('2d');
+  if (context) {
+    const gradient = context.createRadialGradient(128, 128, 8, 128, 128, 120);
+    gradient.addColorStop(0, 'rgba(42, 36, 30, 0.32)');
+    gradient.addColorStop(0.55, 'rgba(42, 36, 30, 0.12)');
+    gradient.addColorStop(1, 'rgba(42, 36, 30, 0)');
+    context.fillStyle = gradient;
+    context.fillRect(0, 0, 256, 256);
+  }
+}
+const contactTexture = new THREE.CanvasTexture(contactCanvas);
+contactTexture.colorSpace = THREE.SRGBColorSpace;
 const floor = new THREE.Mesh(
-  new THREE.CircleGeometry(300, 96),
-  new THREE.ShadowMaterial({ color: 0x2a241e, opacity: 0.1 }),
+  new THREE.PlaneGeometry(260, 260),
+  new THREE.MeshBasicMaterial({
+    map: contactTexture,
+    transparent: true,
+    depthWrite: false,
+    opacity: 0.9,
+  }),
 );
 floor.rotation.x = -Math.PI / 2;
-floor.receiveShadow = true;
 floor.position.y = -0.6;
 scene.add(floor);
 
@@ -185,6 +202,7 @@ let autoFit = false;
 let gearSet: THREE.Group | null = null;
 let gearRatio = 50;
 let flexMaterial: THREE.MeshStandardMaterial | null = null;
+let flexMaterials: THREE.MeshStandardMaterial[] = [];
 let drive: Drive | null = null;
 let driveEnabled = false;
 let drivePaused = false;
@@ -263,12 +281,12 @@ const stateByMaterial = () => new Map(materialStates.map((state) => [state.mater
 
 const GHOST_OPACITY = new Map([['Circular_Spline_Ring', 0.45]]);
 
-const setPartGhost = (labels: Set<string>, on: boolean) => {
+const setPartGhost = (labels: Set<string>, on: boolean, defaultOpacity = 0.2) => {
   if (!actuator) return;
   const states = stateByMaterial();
   for (const part of actuator.parts) {
     if (!labels.has(part.spec.node)) continue;
-    const opacity = GHOST_OPACITY.get(part.spec.node) ?? 0.2;
+    const opacity = GHOST_OPACITY.get(part.spec.node) ?? defaultOpacity;
     for (const material of part.allMaterials) {
       const state = states.get(material);
       if (!state) continue;
@@ -303,9 +321,15 @@ const GEAR_GHOST = new Set([
   'Copper_Stator_Windings',
   'Output_Cap_Mount_Flange',
   'Output_Flange',
+  'Output_Encoder_PCB',
+  'Output_Encoder_Ring',
+  'Cross_Roller_Outer_Race',
+  'Cross_Roller_Inner_Race',
+  'Cross_Roller_Cage',
 ]);
 
 let gearGhosted = false;
+let cupGhosted = false;
 
 const setHousingGhost = (on: boolean) => setPartGhost(EXPLODE_GHOST, on);
 const setGhosted = (on: boolean) => {
@@ -314,7 +338,29 @@ const setGhosted = (on: boolean) => {
 };
 const setGearGhost = (on: boolean) => {
   gearGhosted = on;
-  setPartGhost(GEAR_GHOST, on);
+  setPartGhost(GEAR_GHOST, on, 0.1);
+};
+
+const CUP_GHOST_MESHES = new Set(['Flexspline_Wall', 'Flexspline_Diaphragm']);
+
+/** Ghost the cup wall/diaphragm so the tooth band is visible from above. */
+const setCupGhost = (on: boolean) => {
+  cupGhosted = on;
+  const part = actuator?.parts.find((item) => item.spec.node === 'Flexspline_Cup');
+  if (!part) return;
+  const states = stateByMaterial();
+  for (const mesh of part.meshes) {
+    if (!CUP_GHOST_MESHES.has(mesh.name)) continue;
+    const materials = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
+    for (const material of materials) {
+      const state = states.get(material);
+      if (!state) continue;
+      material.transparent = on ? true : state.transparent;
+      material.opacity = on ? 0.08 : state.opacity;
+      material.depthWrite = on ? false : state.depthWrite;
+      material.needsUpdate = true;
+    }
+  }
 };
 
 let cutEnabled = false;
@@ -400,7 +446,9 @@ const frameModel = (bounds: THREE.Box3) => {
   const framing = framingForBounds(bounds);
   camera.position.copy(framing.position);
   controls.target.copy(framing.target);
-  controls.minDistance = framing.distance * 0.42;
+  // Keep a close-up floor independent of the overview framing so the gear
+  // preset and small-part focus can actually reach the parts.
+  controls.minDistance = 20;
   controls.maxDistance = framing.distance * 2.3;
   controls.update();
 
@@ -532,7 +580,7 @@ const focusPart = (part: ActuatorPart) => {
   direction.normalize();
   const framing = framingForBounds(box, 1.7);
   const target = framing.target.clone();
-  const distance = Math.max(framing.distance, 80);
+  const distance = Math.max(framing.distance, 30);
   const position = target.clone().addScaledVector(direction, distance);
   moveCamera(position, target, 760);
 };
@@ -605,9 +653,18 @@ const resetCamera = () => {
   cutButton.disabled = false;
   document.body.classList.remove('is-exploding');
   drivePaused = false;
+
+  // Reset the transmission controls to the documented defaults.
+  inputRpmInput.value = '1000';
+  drive?.setInputRpm(1000);
+  if (actuator && gearRatio !== 50) installGearSet(actuator, 50);
+  else updateRatioUI(gearRatio);
+  setDriveEnabled(!reduceMotion);
+
   setHousingGhost(false);
   setGhosted(false);
   setGearGhost(false);
+  setCupGhost(false);
   if (driveEnabled) setGhosted(true);
   setCutEnabled(false);
   if (loadedBounds) frameModel(loadedBounds);
@@ -626,6 +683,7 @@ const focusGearView = () => {
   setCutEnabled(true);
   setGhosted(false);
   setGearGhost(true);
+  setCupGhost(true);
   hasInteracted = true;
   autoFit = false;
   controls.autoRotate = false;
@@ -633,8 +691,11 @@ const focusGearView = () => {
   // fills the view while the ghosted housing stays out of the way.
   box.min.y = 58;
   box.max.y = 78;
-  const direction = new THREE.Vector3(0.45, 0.18, 1.0).normalize();
-  const framing = framingForBounds(box, 1.4);
+  // Axial view from the output end with the cup wall/diaphragm and housing
+  // ghosted, so the flexspline ellipse is seen face-on rather than
+  // foreshortened.
+  const direction = new THREE.Vector3(0.15, 0.96, 0.24).normalize();
+  const framing = framingForBounds(box, 1.7);
   const target = framing.target.clone();
   moveCamera(target.clone().addScaledVector(direction, framing.distance), target, 780);
 };
@@ -652,6 +713,7 @@ const focusOutputView = () => {
   setCutEnabled(true);
   setGhosted(false);
   setGearGhost(false);
+  setCupGhost(false);
   hasInteracted = true;
   autoFit = false;
   controls.autoRotate = false;
@@ -708,7 +770,7 @@ const driveGroupsFor = (loaded: LoadedActuator): DriveGroups => {
     else if (child.group === 'half_speed') halfSpeed.push(child.object);
   }
 
-  return { input, output, cage, halfSpeed, flexMaterial: flexMaterial ?? undefined };
+  return { input, output, cage, halfSpeed, flexMaterials };
 };
 
 const updateDriveReadout = (): void => {
@@ -754,10 +816,11 @@ const installGearSet = (loaded: LoadedActuator, ratio: number): void => {
   next.name = 'Harmonic_Gear_Set';
   next.rotation.x = -Math.PI / 2;
 
-  const flexTeeth = next.getObjectByName('Flexspline_Teeth');
-  if (flexTeeth instanceof THREE.Mesh) {
-    flexMaterial = makeFlexMaterial(flexTeeth, params);
-  }
+  flexMaterials = ['Flexspline_Teeth', 'Flexspline_Wall', 'Flexspline_Diaphragm']
+    .map((name) => next.getObjectByName(name))
+    .filter((mesh): mesh is THREE.Mesh => mesh instanceof THREE.Mesh)
+    .map((mesh) => makeFlexMaterial(mesh, params));
+  flexMaterial = flexMaterials[0] ?? null;
 
   loaded.root.add(next);
 
@@ -810,8 +873,105 @@ const installGearSet = (loaded: LoadedActuator, ratio: number): void => {
   if (cutEnabled) setCutEnabled(true);
   if (transmissionGhosted) setGhosted(true);
   if (gearGhosted) setGearGhost(true);
+  if (cupGhosted) setCupGhost(true);
   updateRatioUI(ratio);
 };
+
+let diagramScale = 1;
+let diagramX = 0;
+let diagramY = 0;
+const diagramPointers = new Map<number, { x: number; y: number }>();
+let diagramDrag: { x: number; y: number; tx: number; ty: number } | null = null;
+let diagramPinch:
+  | { distance: number; scale: number; x: number; y: number; tx: number; ty: number }
+  | null = null;
+
+const applyDiagramTransform = (): void => {
+  diagramImage.style.transform = `translate(${diagramX}px, ${diagramY}px) scale(${diagramScale})`;
+  diagramFigure.style.cursor = diagramScale > 1 ? 'grab' : 'zoom-in';
+};
+
+const resetDiagramZoom = (): void => {
+  diagramScale = 1;
+  diagramX = 0;
+  diagramY = 0;
+  diagramPointers.clear();
+  diagramDrag = null;
+  diagramPinch = null;
+  applyDiagramTransform();
+};
+
+diagramFigure.addEventListener(
+  'wheel',
+  (event) => {
+    if (!diagramOpen) return;
+    event.preventDefault();
+    diagramScale = THREE.MathUtils.clamp(
+      diagramScale * Math.exp(-event.deltaY * 0.0018),
+      1,
+      4,
+    );
+    if (diagramScale === 1) {
+      diagramX = 0;
+      diagramY = 0;
+    }
+    applyDiagramTransform();
+  },
+  { passive: false },
+);
+
+diagramFigure.addEventListener('pointerdown', (event) => {
+  if (!diagramOpen) return;
+  diagramFigure.setPointerCapture(event.pointerId);
+  diagramPointers.set(event.pointerId, { x: event.clientX, y: event.clientY });
+  if (diagramPointers.size === 2) {
+    const [a, b] = [...diagramPointers.values()];
+    diagramPinch = {
+      distance: Math.hypot(a.x - b.x, a.y - b.y),
+      scale: diagramScale,
+      x: (a.x + b.x) / 2,
+      y: (a.y + b.y) / 2,
+      tx: diagramX,
+      ty: diagramY,
+    };
+    diagramDrag = null;
+  } else if (diagramPointers.size === 1) {
+    diagramDrag = { x: event.clientX, y: event.clientY, tx: diagramX, ty: diagramY };
+  }
+});
+
+diagramFigure.addEventListener('pointermove', (event) => {
+  if (!diagramOpen || !diagramPointers.has(event.pointerId)) return;
+  diagramPointers.set(event.pointerId, { x: event.clientX, y: event.clientY });
+
+  if (diagramPointers.size >= 2 && diagramPinch) {
+    const [a, b] = [...diagramPointers.values()];
+    const distance = Math.hypot(a.x - b.x, a.y - b.y);
+    diagramScale = THREE.MathUtils.clamp(
+      diagramPinch.scale * (distance / Math.max(1, diagramPinch.distance)),
+      1,
+      4,
+    );
+    const midX = (a.x + b.x) / 2;
+    const midY = (a.y + b.y) / 2;
+    diagramX = diagramPinch.tx + (midX - diagramPinch.x);
+    diagramY = diagramPinch.ty + (midY - diagramPinch.y);
+    applyDiagramTransform();
+  } else if (diagramDrag && diagramScale > 1) {
+    diagramX = diagramDrag.tx + (event.clientX - diagramDrag.x);
+    diagramY = diagramDrag.ty + (event.clientY - diagramDrag.y);
+    applyDiagramTransform();
+  }
+});
+
+const endDiagramPointer = (event: PointerEvent): void => {
+  diagramPointers.delete(event.pointerId);
+  if (diagramPointers.size < 2) diagramPinch = null;
+  if (diagramPointers.size === 0) diagramDrag = null;
+};
+diagramFigure.addEventListener('pointerup', endDiagramPointer);
+diagramFigure.addEventListener('pointercancel', endDiagramPointer);
+diagramFigure.addEventListener('dblclick', resetDiagramZoom);
 
 const syncDiagram = (): void => {
   if (!diagramOpen || !meshDiagram) return;
@@ -833,6 +993,7 @@ const openDiagram = (): void => {
     Number.isInteger(gearRatio) ? gearRatio : gearRatio.toFixed(1)
   }:1`;
   if (!meshDiagram) meshDiagram = new MeshDiagram(diagramCanvas);
+  resetDiagramZoom();
   meshDiagram.setVisible(true);
   syncDiagram();
 };
@@ -841,6 +1002,7 @@ const closeDiagram = (): void => {
   if (!diagramOpen) return;
   diagramOpen = false;
   meshDiagram?.setVisible(false);
+  resetDiagramZoom();
   diagramPanel.hidden = true;
 };
 
@@ -931,6 +1093,7 @@ const debugApi = {
     autoRotate: controls.autoRotate,
     explodeValue: explodeInput.value,
   }),
+  shadows: () => renderer.shadowMap.enabled,
 };
 
 (window as unknown as { __ha: typeof debugApi }).__ha = debugApi;
@@ -1018,14 +1181,24 @@ explodeInput.addEventListener('input', () => {
   autoFit = true;
   controls.autoRotate = false;
   document.body.classList.toggle('is-exploding', percent > 1);
-  setHousingGhost(percent > 35);
-  if (cutEnabled) setCutEnabled(false);
-  setGhosted(false);
-  setGearGhost(false);
+
   const blocked = percent > 5;
   drivePaused = blocked;
   driveButton.disabled = blocked;
   cutButton.disabled = blocked;
+
+  if (blocked) {
+    if (cutEnabled) setCutEnabled(false);
+    setHousingGhost(percent > 35);
+    setGhosted(false);
+    setGearGhost(false);
+    setCupGhost(false);
+  } else if (percent === 0) {
+    // Back at the assembled view: restore the transmission ghost, but leave
+    // the dedicated gear/cup ghosting to its own preset.
+    setHousingGhost(false);
+    if (driveEnabled) setGhosted(true);
+  }
 });
 
 resetButton.addEventListener('click', resetCamera);

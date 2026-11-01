@@ -85,6 +85,34 @@ test('flexspline teeth taper toward the tip while circular spline teeth widen in
   );
 });
 
+test('built rings match the CAD envelope at 20, 50, and 100', () => {
+  for (const ratio of [20, 50, 100]) {
+    const p = gearParams(ratio);
+    assert.equal(p.csOuterRadius, 38, `CS OD at ${ratio}:1`);
+
+    const group = buildGearSet(p);
+    group.updateMatrixWorld(true);
+    const cs = group.getObjectByName('Circular_Spline_Ring');
+    const wall = group.getObjectByName('Flexspline_Wall');
+    assert.ok(cs && wall);
+
+    const csBox = new THREE.Box3().setFromObject(cs);
+    close(csBox.max.x - csBox.min.x, 76, 0.02);
+
+    const wallMesh = wall as THREE.Mesh;
+    const positions = wallMesh.geometry.getAttribute('position');
+    let minRadius = Number.POSITIVE_INFINITY;
+    let maxRadius = 0;
+    for (let i = 0; i < positions.count; i += 1) {
+      const radius = Math.hypot(positions.getX(i), positions.getY(i));
+      minRadius = Math.min(minRadius, radius);
+      maxRadius = Math.max(maxRadius, radius);
+    }
+    close(minRadius, p.fsInnerRadius, 1e-3);
+    close(maxRadius, p.fsRootRadius, 1e-3);
+  }
+});
+
 test('buildGearSet produces the five named harmonic children with finite bounds', () => {
   const group = buildGearSet(gearParams(50));
   const names = group.children.map((child) => child.name);

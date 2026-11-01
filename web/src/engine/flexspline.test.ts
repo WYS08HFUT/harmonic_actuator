@@ -1,6 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { deformRadius, falloff } from './flexspline.ts';
+import * as THREE from 'three';
+import { deformRadius, falloff, makeFlexMaterial } from './flexspline.ts';
+import { gearParams } from './harmonicGears.ts';
 
 const close = (actual: number, expected: number, epsilon = 1e-9): void => {
   assert.ok(
@@ -25,6 +27,18 @@ test('deformRadius pushes the major axis out by one module and the minor in by o
     deformRadius(23.525, Math.PI / 2, RIM_Z, 0, 0.5, RIM_Z, DIAPHRAGM_Z),
     23.025,
   );
+});
+
+test('the live shader uses the true module so the mates stay consistent', () => {
+  const mesh = new THREE.Mesh(
+    new THREE.BufferGeometry(),
+    new THREE.MeshStandardMaterial(),
+  );
+  const material = makeFlexMaterial(mesh, gearParams(50));
+  const uniforms = material.userData.flexUniforms as {
+    uFlexModule: { value: number };
+  };
+  assert.equal(uniforms.uFlexModule.value, 0.5);
 });
 
 test('the deformation rotates with psi and vanishes at the diaphragm', () => {

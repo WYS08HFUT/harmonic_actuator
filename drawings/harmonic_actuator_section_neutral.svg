@@ -75,8 +75,10 @@
 <line x1="75.00" y1="56.00" x2="110.00" y2="110.80" stroke="#1F2328" stroke-width="0.3" stroke-dasharray="1.2 1.2"/><circle cx="75.00" cy="56.00" r="0.7" fill="#1F2328"/><text x="112.00" y="112.00" font-size="4.2" fill="#1F2328" font-weight="400" text-anchor="start">输出端绝对值编码器</text>
 <line x1="85.00" y1="49.00" x2="110.00" y2="118.80" stroke="#1F2328" stroke-width="0.3" stroke-dasharray="1.2 1.2"/><circle cx="85.00" cy="49.00" r="0.7" fill="#1F2328"/><text x="112.00" y="120.00" font-size="4.2" fill="#1F2328" font-weight="400" text-anchor="start">输出盖 Ø118 · 8×M4 PCD96</text>
 <line x1="78.00" y1="51.00" x2="110.00" y2="126.80" stroke="#1F2328" stroke-width="0.3" stroke-dasharray="1.2 1.2"/><circle cx="78.00" cy="51.00" r="0.7" fill="#1F2328"/><text x="112.00" y="128.00" font-size="4.2" fill="#1F2328" font-weight="400" text-anchor="start">输出止口 Ø42 · 总长 122</text>
-<text x="30.00" y="176.00" font-size="4.2" fill="#5B6B7A" font-weight="400" text-anchor="start">Ø110 机身 / Ø118 安装法兰</text>
-<text x="30.00" y="179.00" font-size="4.2" fill="#5B6B7A" font-weight="400" text-anchor="start">Ø20 通孔 · Ø82 输出法兰 · PCD Ø64</text>
+<text x="30.00" y="171.50" font-size="3.6" fill="#5B6B7A" font-weight="400" text-anchor="start">Ø110 机身 / Ø118 安装法兰</text>
+<text x="30.00" y="177.50" font-size="3.6" fill="#5B6B7A" font-weight="400" text-anchor="start">Ø20 通孔 · Ø82 输出法兰 · PCD Ø64</text>
+<line x1="20.00" y1="43.00" x2="20.00" y2="165.00" stroke="#5B6B7A" stroke-width="0.5" marker-start="url(#arrow-st)" marker-end="url(#arrow-st)"/>
+<text x="17.00" y="104.00" font-size="4.0" fill="#5B6B7A" text-anchor="middle" transform="rotate(-90 17 104)">总长 122</text>
 <text x="113.00" y="142.00" font-size="4.0" fill="#5B6B7A" font-weight="400" text-anchor="start">中性状态 · 圆柔轮 / 中性波发生器</text>
 <defs><marker id="arrow-cu" markerWidth="6" markerHeight="6" refX="5" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 z" fill="#C2652A"/></marker><marker id="arrow-st" markerWidth="6" markerHeight="6" refX="5" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 z" fill="#5B6B7A"/></marker></defs>
 <rect x="110" y="148" width="120" height="26" fill="#F2F0EB" stroke="#B8B2A8" stroke-width="0.4"/>

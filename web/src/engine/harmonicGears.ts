@@ -12,6 +12,7 @@ export interface GearParams {
   csPitchRadius: number;
   csTipRadius: number;
   csRootRadius: number;
+  csOuterRadius: number;
   wgMajorRadius: number;
   wgMinorRadius: number;
 }
@@ -50,6 +51,8 @@ const WG_RACE_WALL = 1.0;
 const WG_BALL_DIAMETER = 2.5;
 const WG_BALL_COUNT = 18;
 const FS_HUB_BORE_RADIUS = 16;
+/** Circular-spline body OD 76 mm from the CAD parameter table. */
+const CS_OUTER_RADIUS = 38;
 
 export function snapRatio(value: number): number {
   if (!Number.isFinite(value)) return 50;
@@ -73,6 +76,7 @@ export function gearParams(ratio: number): GearParams {
     csPitchRadius: 0,
     csTipRadius: 0,
     csRootRadius: 0,
+    csOuterRadius: CS_OUTER_RADIUS,
     wgMajorRadius: 0,
     wgMinorRadius: 0,
   };
@@ -262,24 +266,23 @@ function buildFlexspline(p: GearParams): THREE.Group {
   const group = new THREE.Group();
   group.name = 'Flexspline_Cup';
 
-  // One shared material so the vertex-shader deformation moves the whole cup.
-  const material = metalMaterial(GEAR_COLORS.flexspline, { flat: true });
-
+  // Three materials share the same injected deformation but let the gear
+  // view ghost the cup wall and diaphragm without hiding the tooth band.
   const teeth = toothedRing(
     externalToothProfile(p),
     p.fsInnerRadius,
     GEAR_STATIONS.fsTeeth[0],
     GEAR_STATIONS.fsTeeth[1],
-    material,
+    metalMaterial(GEAR_COLORS.flexspline, { flat: true }),
   );
   teeth.name = 'Flexspline_Teeth';
 
   const wall = annulus(
+    p.fsRootRadius,
     p.fsInnerRadius,
-    p.fsInnerRadius - FS_WALL,
     GEAR_STATIONS.fsWall[0],
     GEAR_STATIONS.fsWall[1],
-    material,
+    metalMaterial(GEAR_COLORS.flexspline),
   );
   wall.name = 'Flexspline_Wall';
 
@@ -288,7 +291,7 @@ function buildFlexspline(p: GearParams): THREE.Group {
     FS_HUB_BORE_RADIUS,
     GEAR_STATIONS.fsDiaphragm[0],
     GEAR_STATIONS.fsDiaphragm[1],
-    material,
+    metalMaterial(GEAR_COLORS.flexspline),
   );
   diaphragm.name = 'Flexspline_Diaphragm';
 
@@ -300,10 +303,9 @@ function buildCircularSpline(p: GearParams): THREE.Group {
   const group = new THREE.Group();
   group.name = 'Circular_Spline_Ring';
 
-  const rimRadius = p.csRootRadius + Math.max(3, 6 * p.module);
   const ring = toothedRing(
     internalToothProfile(p),
-    rimRadius,
+    p.csOuterRadius,
     GEAR_STATIONS.cs[0],
     GEAR_STATIONS.cs[1],
     metalMaterial(GEAR_COLORS.circularSpline, { flat: true }),

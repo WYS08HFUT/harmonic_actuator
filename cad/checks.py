@@ -1,5 +1,6 @@
 import json
 import math
+import re
 import struct
 from collections import Counter
 from pathlib import Path
@@ -684,6 +685,20 @@ def check_drawings() -> None:
     assert "中性状态" in neutral
     assert "圆柔轮" in neutral
     assert WEB_TEACHING_SVG.read_text(encoding="utf-8") == teaching
+
+    # The two bottom dimension captions must not share a baseline, and the
+    # overall-length chain must be present.
+    caption_ys = []
+    for caption in ("Ø110 机身 / Ø118 安装法兰", "Ø20 通孔 · Ø82 输出法兰 · PCD Ø64"):
+        match = re.search(
+            r'<text x="[^"]+" y="([\d.]+)"[^>]*>' + re.escape(caption) + r"</text>",
+            teaching,
+        )
+        assert match, caption
+        caption_ys.append(float(match.group(1)))
+    assert caption_ys[1] - caption_ys[0] >= 5.0, caption_ys
+    assert '<line x1="20.00" y1="43.00" x2="20.00" y2="165.00"' in teaching
+    assert "总长 122" in teaching
     print("PASS drawings")
 
 

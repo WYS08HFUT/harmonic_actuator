@@ -159,8 +159,17 @@ def _svg(teaching: bool) -> str:
     p.append(_label(48, 114, 112, 128, "输出止口 Ø42 · 总长 122"))
 
     # dimensions
-    p.append(_text(30, 176, "Ø110 机身 / Ø118 安装法兰", 4.2, "#5B6B7A"))
-    p.append(_text(30, 179, "Ø20 通孔 · Ø82 输出法兰 · PCD Ø64", 4.2, "#5B6B7A"))
+    p.append(_text(30, 171.5, "Ø110 机身 / Ø118 安装法兰", 3.6, "#5B6B7A"))
+    p.append(_text(30, 177.5, "Ø20 通孔 · Ø82 输出法兰 · PCD Ø64", 3.6, "#5B6B7A"))
+    p.append(
+        '<line x1="20.00" y1="43.00" x2="20.00" y2="165.00" '
+        'stroke="#5B6B7A" stroke-width="0.5" '
+        'marker-start="url(#arrow-st)" marker-end="url(#arrow-st)"/>'
+    )
+    p.append(
+        '<text x="17.00" y="104.00" font-size="4.0" fill="#5B6B7A" '
+        'text-anchor="middle" transform="rotate(-90 17 104)">总长 122</text>'
+    )
 
     if teaching:
         p.append(
