@@ -44,6 +44,15 @@ export const toGltfOffset = ([x, y, z]: [number, number, number]): THREE.Vector3
 export const toGltfAxis = (axis: [number, number, number]): THREE.Vector3 =>
   toGltfOffset(axis).normalize();
 
+/**
+ * Explode offsets are applied to nodes that live under the GLB's rotated
+ * `HA_110_Actuator` node, whose local frame is the CAD model frame (Z-up).
+ * They must therefore stay in model millimetres, not be converted to the
+ * glTF Y-up world frame.
+ */
+export const toModelOffset = ([x, y, z]: [number, number, number]): THREE.Vector3 =>
+  new THREE.Vector3(normalizeZero(x), normalizeZero(y), normalizeZero(z));
+
 export const findNode = (root: THREE.Object3D, name: string): THREE.Object3D | null => {
   let found: THREE.Object3D | null = null;
   root.traverse((object) => {
@@ -138,7 +147,7 @@ export async function loadActuator(
       standardMaterials,
       basePosition: object.position.clone(),
       baseQuaternion: object.quaternion.clone(),
-      offset: toGltfOffset(spec.explode_offset),
+      offset: toModelOffset(spec.explode_offset),
       localBox: new THREE.Box3().setFromObject(object),
     };
 

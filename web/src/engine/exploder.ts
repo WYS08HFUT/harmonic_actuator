@@ -76,7 +76,16 @@ export class Exploder {
         this.maxOrder,
         this.reducedMotion,
       );
-      const offset = part.offset.clone().multiplyScalar(eased);
+      // localBox is a world box; offsets live in the part's parent frame
+      // (the CAD Z-up frame under the GLB's rotated actuator node), so the
+      // offset must be rotated into world before translating the box.
+      const parentQuaternion = part.object.parent
+        ? part.object.parent.getWorldQuaternion(new THREE.Quaternion())
+        : new THREE.Quaternion();
+      const offset = part.offset
+        .clone()
+        .multiplyScalar(eased)
+        .applyQuaternion(parentQuaternion);
       bounds.union(part.localBox.clone().translate(offset));
     }
 

@@ -41,10 +41,42 @@ try {
 
   await page.click('#btn-view-gear');
   await wait(1100);
+  const gear50 = await page.evaluate(() => window.__ha.gear());
+  if (gear50.children.length !== 5) {
+    throw new Error(`live gear set missing children: ${JSON.stringify(gear50)}`);
+  }
+  if (gear50.zf !== 100 || gear50.zc !== 102) {
+    throw new Error(`50:1 tooth counts wrong: ${JSON.stringify(gear50)}`);
+  }
+  console.log('gear check', JSON.stringify({ ratio: gear50.ratio, zf: gear50.zf, zc: gear50.zc, pickMeshes: gear50.pickMeshes }));
   await shot('gear');
+
+  await page.evaluate(() => {
+    const slider = document.querySelector('#ratio');
+    slider.value = '100';
+    slider.dispatchEvent(new Event('input', { bubbles: true }));
+  });
+  await wait(700);
+  const gear100 = await page.evaluate(() => window.__ha.gear());
+  if (gear100.ratio !== 100 || gear100.zf !== 200 || gear100.zc !== 202) {
+    throw new Error(`ratio rebuild failed: ${JSON.stringify(gear100)}`);
+  }
+  console.log('ratio rebuild', JSON.stringify({ ratio: gear100.ratio, zf: gear100.zf, zc: gear100.zc }));
+  await shot('gear100');
+  await page.evaluate(() => {
+    const slider = document.querySelector('#ratio');
+    slider.value = '50';
+    slider.dispatchEvent(new Event('input', { bubbles: true }));
+  });
+  await wait(500);
 
   await page.click('#btn-view-output');
   await wait(1100);
+  const bodyOpacity = await page.evaluate(() => window.__ha.materialOpacity('Body_Housing'));
+  if (!bodyOpacity.length || bodyOpacity.some((value) => value !== 1)) {
+    throw new Error(`housing kept a ghost state: ${JSON.stringify(bodyOpacity)}`);
+  }
+  console.log('ghost restore', JSON.stringify(bodyOpacity));
   await shot('output');
 
   await page.click('#btn-view-overview');

@@ -3,7 +3,13 @@ import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 import { PILLAR_META, TEACHING } from './data/teaching.ts';
 import { Exploder } from './engine/exploder.ts';
-import { loadActuator } from './engine/loadActuator.ts';
+import {
+  buildGearSet,
+  disposeGearSet,
+  gearParams,
+  snapRatio,
+} from './engine/harmonicGears.ts';
+import { loadActuator, toModelOffset } from './engine/loadActuator.ts';
 import type { ActuatorPart, LoadedActuator } from './engine/loadActuator.ts';
 import './style.css';
 
@@ -34,6 +40,8 @@ const partClose = document.querySelector<HTMLButtonElement>('#part-close');
 const partSelect = document.querySelector<HTMLSelectElement>('#part-select');
 const hoverLabel = document.querySelector<HTMLDivElement>('#hover-label');
 const hoverName = document.querySelector<HTMLSpanElement>('#hover-name');
+const ratioInput = document.querySelector<HTMLInputElement>('#ratio');
+const ratioValue = document.querySelector<HTMLOutputElement>('#ratio-value');
 
 if (
   !container ||
@@ -62,7 +70,9 @@ if (
   !partClose ||
   !partSelect ||
   !hoverLabel ||
-  !hoverName
+  !hoverName ||
+  !ratioInput ||
+  !ratioValue
 ) {
   throw new Error('Page shell is missing required elements');
 }
@@ -150,6 +160,11 @@ let exploder: Exploder | null = null;
 let hasInteracted = false;
 let autoFit = false;
 
+let gearSet: THREE.Group | null = null;
+let gearRatio = 50;
+let transmissionGhosted = false;
+let ratioTimer: number | null = null;
+
 let actuator: LoadedActuator | null = null;
 let selected: ActuatorPart | null = null;
 let hovered: ActuatorPart | null = null;
@@ -185,17 +200,35 @@ interface MaterialState {
 
 let materialStates: MaterialState[] = [];
 
-const captureMaterialStates = () => {
+/**
+ * Snapshot each material's resting state once. A ratio rebuild replaces only
+ * the procedural materials, so existing (possibly ghosted) materials must
+ * keep their original base state rather than re-snapshotting a ghost.
+ */
+const captureMaterialStates = (prune = false) => {
   if (!actuator) return;
-  materialStates = actuator.parts.flatMap((part) =>
-    part.allMaterials.map((material) => ({
-      material,
-      transparent: material.transparent,
-      opacity: material.opacity,
-      depthWrite: material.depthWrite,
-      side: material.side,
-    })),
-  );
+  if (prune) {
+    const live = new Set<THREE.Material>();
+    for (const part of actuator.parts) {
+      for (const material of part.allMaterials) live.add(material);
+    }
+    materialStates = materialStates.filter((state) => live.has(state.material));
+  }
+
+  const known = new Set(materialStates.map((state) => state.material));
+  for (const part of actuator.parts) {
+    for (const material of part.allMaterials) {
+      if (known.has(material)) continue;
+      known.add(material);
+      materialStates.push({
+        material,
+        transparent: material.transparent,
+        opacity: material.opacity,
+        depthWrite: material.depthWrite,
+        side: material.side,
+      });
+    }
+  }
 };
 
 const stateByMaterial = () => new Map(materialStates.map((state) => [state.material, state]));
@@ -231,8 +264,25 @@ const TRANSMISSION_GHOST = new Set([
   'Output_Cap_Mount_Flange',
 ]);
 
+const GEAR_GHOST = new Set([
+  'Body_Housing',
+  'Frameless_Stator_Core',
+  'Copper_Stator_Windings',
+  'Output_Cap_Mount_Flange',
+  'Output_Flange',
+]);
+
+let gearGhosted = false;
+
 const setHousingGhost = (on: boolean) => setPartGhost(EXPLODE_GHOST, on);
-const setGhosted = (on: boolean) => setPartGhost(TRANSMISSION_GHOST, on);
+const setGhosted = (on: boolean) => {
+  transmissionGhosted = on;
+  setPartGhost(TRANSMISSION_GHOST, on);
+};
+const setGearGhost = (on: boolean) => {
+  gearGhosted = on;
+  setPartGhost(GEAR_GHOST, on);
+};
 
 let cutEnabled = false;
 const cutPlane = new THREE.Plane(new THREE.Vector3(0, 0, -1), 0);
@@ -518,6 +568,7 @@ const resetCamera = () => {
   document.body.classList.remove('is-exploding');
   setHousingGhost(false);
   setGhosted(false);
+  setGearGhost(false);
   setCutEnabled(false);
   if (loadedBounds) frameModel(loadedBounds);
 };
@@ -534,11 +585,16 @@ const focusGearView = () => {
   selectPart(null, false);
   setCutEnabled(true);
   setGhosted(false);
+  setGearGhost(true);
   hasInteracted = true;
   autoFit = false;
   controls.autoRotate = false;
-  const direction = new THREE.Vector3(0.34, 0.24, 1.0).normalize();
-  const framing = framingForBounds(box, 1.55);
+  // Frame the tooth band (Z 60-74) rather than the whole cup, so the mesh
+  // fills the view while the ghosted housing stays out of the way.
+  box.min.y = 58;
+  box.max.y = 78;
+  const direction = new THREE.Vector3(0.45, 0.18, 1.0).normalize();
+  const framing = framingForBounds(box, 1.4);
   const target = framing.target.clone();
   moveCamera(target.clone().addScaledVector(direction, framing.distance), target, 780);
 };
@@ -555,6 +611,7 @@ const focusOutputView = () => {
   selectPart(null, false);
   setCutEnabled(true);
   setGhosted(false);
+  setGearGhost(false);
   hasInteracted = true;
   autoFit = false;
   controls.autoRotate = false;
@@ -562,6 +619,107 @@ const focusOutputView = () => {
   const framing = framingForBounds(box, 1.8);
   const target = framing.target.clone();
   moveCamera(target.clone().addScaledVector(direction, framing.distance), target, 780);
+};
+
+const collectPartMaterials = (part: ActuatorPart): void => {
+  const meshes: THREE.Mesh[] = [];
+  const materials = new Set<THREE.Material>();
+  const standardMaterials: THREE.MeshStandardMaterial[] = [];
+
+  part.object.traverse((child) => {
+    if (!(child instanceof THREE.Mesh)) return;
+    meshes.push(child);
+    child.castShadow = true;
+    child.receiveShadow = true;
+    child.userData.part = part;
+
+    const list = Array.isArray(child.material) ? child.material : [child.material];
+    for (const material of list) {
+      if (materials.has(material)) continue;
+      materials.add(material);
+      if (material instanceof THREE.MeshStandardMaterial) {
+        material.emissive = new THREE.Color(0xc2652a);
+        material.emissiveIntensity = 0;
+        standardMaterials.push(material);
+      }
+    }
+  });
+
+  part.meshes = meshes;
+  part.allMaterials = [...materials];
+  part.standardMaterials = standardMaterials;
+  part.object.userData.part = part;
+};
+
+const updateRatioUI = (ratio: number): void => {
+  ratioInput.value = String(ratio);
+  ratioValue.textContent = `${Number.isInteger(ratio) ? ratio : ratio.toFixed(1)}:1`;
+};
+
+/**
+ * Swap the five hidden CAD harmonic nodes for the live procedural gear set.
+ * The set is rotated -90° about X so its Z-up stations land in the GLB's
+ * Y-up frame; its children stay in the CAD frame for the flexspline shader.
+ */
+const installGearSet = (loaded: LoadedActuator, ratio: number): void => {
+  const previous = gearSet;
+  const savedRotations = new Map<string, THREE.Euler>();
+  if (previous) {
+    for (const child of previous.children) savedRotations.set(child.name, child.rotation.clone());
+  }
+
+  const next = buildGearSet(gearParams(ratio));
+  next.name = 'Harmonic_Gear_Set';
+  next.rotation.x = -Math.PI / 2;
+  loaded.root.add(next);
+
+  const byName = new Map(next.children.map((child) => [child.name, child]));
+  for (const part of loaded.parts) {
+    if (!part.spec.procedural) continue;
+    const object = byName.get(part.spec.node);
+    if (!object) {
+      console.warn(`[ha-110] Missing procedural gear child: ${part.spec.node}`);
+      continue;
+    }
+    const saved = savedRotations.get(object.name);
+    if (saved) object.rotation.copy(saved);
+
+    part.object = object;
+    part.basePosition = object.position.clone();
+    part.baseQuaternion = object.quaternion.clone();
+    part.offset = toModelOffset(part.spec.explode_offset);
+    collectPartMaterials(part);
+  }
+
+  if (previous) disposeGearSet(previous);
+  gearSet = next;
+  gearRatio = ratio;
+
+  next.updateMatrixWorld(true);
+  for (const part of loaded.parts) {
+    if (part.spec.procedural && part.object.parent === next) {
+      part.localBox = new THREE.Box3().setFromObject(part.object);
+    }
+  }
+
+  loaded.pickMeshes = [];
+  loaded.root.traverse((object) => {
+    if (!(object instanceof THREE.Mesh)) return;
+    let node: THREE.Object3D | null = object;
+    while (node) {
+      if (!node.visible) return;
+      node = node.parent;
+    }
+    loaded.pickMeshes.push(object);
+  });
+  loaded.bounds = new THREE.Box3().setFromObject(loaded.root);
+
+  exploder?.update(0);
+  captureMaterialStates(true);
+  if (cutEnabled) setCutEnabled(true);
+  if (transmissionGhosted) setGhosted(true);
+  if (gearGhosted) setGearGhost(true);
+  updateRatioUI(ratio);
 };
 
 const debugApi = {
@@ -581,6 +739,35 @@ const debugApi = {
       wgUnclipped: unclipped('Wave_Generator_Cam'),
       outputFlangeUnclipped: unclipped('Output_Flange'),
     };
+  },
+  gear: () => {
+    const params = gearParams(gearRatio);
+    const base = { ratio: gearRatio, zf: params.zf, zc: params.zc, module: params.module };
+    if (!gearSet) return { ...base, children: [], pickMeshes: 0 };
+    const bounds = new THREE.Box3().setFromObject(gearSet);
+    return {
+      ...base,
+      children: gearSet.children.map((child) => child.name),
+      pickMeshes: actuator?.pickMeshes.length ?? 0,
+      bounds: {
+        min: bounds.min.toArray().map((value) => Number(value.toFixed(2))),
+        max: bounds.max.toArray().map((value) => Number(value.toFixed(2))),
+      },
+    };
+  },
+  setRatio: (value: number): number => {
+    if (!actuator) {
+      gearRatio = snapRatio(value);
+      updateRatioUI(gearRatio);
+      return gearRatio;
+    }
+    if (selected) selectPart(null, false);
+    installGearSet(actuator, snapRatio(value));
+    return gearRatio;
+  },
+  materialOpacity: (node: string): number[] => {
+    const part = actuator?.parts.find((item) => item.spec.node === node);
+    return part?.allMaterials.map((material) => material.opacity) ?? [];
   },
 };
 
@@ -603,6 +790,8 @@ const boot = async () => {
       object.receiveShadow = true;
     });
 
+    installGearSet(loaded, loaded.manifest.ratio.default);
+
     for (const part of loaded.parts) {
       const note = TEACHING[part.spec.teaching];
       const option = document.createElement('option');
@@ -615,8 +804,6 @@ const boot = async () => {
 
     loadedBounds = loaded.bounds.clone();
     exploder = new Exploder(loaded.parts, loaded.maxOrder, reduceMotion);
-
-    captureMaterialStates();
 
     updateExplodeUI(0);
     frameModel(loadedBounds);
@@ -654,6 +841,7 @@ explodeInput.addEventListener('input', () => {
   setHousingGhost(percent > 35);
   if (cutEnabled) setCutEnabled(false);
   setGhosted(false);
+  setGearGhost(false);
   const blocked = percent > 5;
   driveButton.disabled = blocked;
   cutButton.disabled = blocked;
@@ -662,6 +850,18 @@ explodeInput.addEventListener('input', () => {
 resetButton.addEventListener('click', resetCamera);
 
 partClose.addEventListener('click', () => selectPart(null, true));
+
+ratioInput.addEventListener('input', () => {
+  const ratio = snapRatio(Number(ratioInput.value));
+  updateRatioUI(ratio);
+  if (ratioTimer !== null) window.clearTimeout(ratioTimer);
+  ratioTimer = window.setTimeout(() => {
+    ratioTimer = null;
+    if (!actuator) return;
+    if (selected) selectPart(null, false);
+    installGearSet(actuator, ratio);
+  }, 100);
+});
 
 cutButton.addEventListener('click', () => setCutEnabled(!cutEnabled));
 viewOverviewButton.addEventListener('click', resetCamera);
