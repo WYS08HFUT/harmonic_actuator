@@ -44,7 +44,16 @@ def export_all(p: ActuatorParams = DEFAULT) -> dict[str, Path]:
     export_step(cut, CUTAWAY_STEP)
     export_stl(cut, CUTAWAY_STL)
     # Keep numeric millimetres in the GLB (glTF root stays Y-up).
-    export_gltf(assy, GLB, unit=Unit.M, binary=True)
+    # 0.05 mm chord / 0.2 rad keeps the rendered surfaces smooth while
+    # cutting the web GLB from ~12 MB (build123d's 0.001 mm default).
+    export_gltf(
+        assy,
+        GLB,
+        unit=Unit.M,
+        binary=True,
+        linear_deflection=0.05,
+        angular_deflection=0.2,
+    )
     shutil.copyfile(GLB, WEB_GLB)
 
     names = _glb_names(GLB)

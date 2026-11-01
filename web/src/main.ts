@@ -368,6 +368,11 @@ const showError = (error: unknown) => {
   errorMessage.textContent = error instanceof Error ? error.message : String(error);
 };
 
+renderer.domElement.addEventListener('webglcontextlost', (event) => {
+  event.preventDefault();
+  showError(new Error('WebGL 上下文丢失，请刷新页面重试。'));
+});
+
 interface Framing {
   position: THREE.Vector3;
   target: THREE.Vector3;
