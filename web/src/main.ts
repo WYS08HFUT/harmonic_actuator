@@ -6,6 +6,7 @@ import { Drive, outputRpm } from './engine/drive.ts';
 import type { DriveGroups } from './engine/drive.ts';
 import { Exploder } from './engine/exploder.ts';
 import { makeFlexMaterial } from './engine/flexspline.ts';
+import { MeshDiagram } from './engine/meshDiagram.ts';
 import {
   buildGearSet,
   disposeGearSet,
@@ -49,6 +50,11 @@ const driveControls = document.querySelector<HTMLDivElement>('#drive-controls');
 const inputRpmInput = document.querySelector<HTMLInputElement>('#input-rpm');
 const inputRpmValue = document.querySelector<HTMLOutputElement>('#input-rpm-value');
 const outputRpmText = document.querySelector<HTMLElement>('#output-rpm');
+const diagramButton = document.querySelector<HTMLButtonElement>('#btn-diagram');
+const diagramPanel = document.querySelector<HTMLDivElement>('#diagram-panel');
+const diagramClose = document.querySelector<HTMLButtonElement>('#diagram-close');
+const diagramCanvas = document.querySelector<HTMLCanvasElement>('#diagram-canvas');
+const diagramKicker = document.querySelector<HTMLParagraphElement>('#diagram-kicker');
 
 if (
   !container ||
@@ -83,7 +89,12 @@ if (
   !driveControls ||
   !inputRpmInput ||
   !inputRpmValue ||
-  !outputRpmText
+  !outputRpmText ||
+  !diagramButton ||
+  !diagramPanel ||
+  !diagramClose ||
+  !diagramCanvas ||
+  !diagramKicker
 ) {
   throw new Error('Page shell is missing required elements');
 }
@@ -179,6 +190,8 @@ let driveEnabled = false;
 let drivePaused = false;
 let transmissionGhosted = false;
 let ratioTimer: number | null = null;
+let meshDiagram: MeshDiagram | null = null;
+let diagramOpen = false;
 
 let actuator: LoadedActuator | null = null;
 let selected: ActuatorPart | null = null;
@@ -795,6 +808,36 @@ const installGearSet = (loaded: LoadedActuator, ratio: number): void => {
   updateRatioUI(ratio);
 };
 
+const syncDiagram = (): void => {
+  if (!diagramOpen || !meshDiagram) return;
+  meshDiagram.setState({
+    ratio: gearRatio,
+    waveAngle: drive?.waveAngle ?? 0,
+    outputAngle: drive?.outputAngle ?? 0,
+    inputRpm: Number(inputRpmInput.value),
+  });
+};
+
+const openDiagram = (): void => {
+  if (diagramOpen) return;
+  selectPart(null, false);
+  diagramPanel.hidden = false;
+  diagramOpen = true;
+  diagramKicker.textContent = `STRUCTURE · ${
+    Number.isInteger(gearRatio) ? gearRatio : gearRatio.toFixed(1)
+  }:1`;
+  if (!meshDiagram) meshDiagram = new MeshDiagram(diagramCanvas);
+  meshDiagram.setVisible(true);
+  syncDiagram();
+};
+
+const closeDiagram = (): void => {
+  if (!diagramOpen) return;
+  diagramOpen = false;
+  meshDiagram?.setVisible(false);
+  diagramPanel.hidden = true;
+};
+
 const debugApi = {
   cutEnabled: () => cutEnabled,
   checkCut: () => {
@@ -867,6 +910,11 @@ const debugApi = {
     updateDriveReadout();
     return Number(inputRpmInput.value);
   },
+  diagram: () => ({
+    open: diagramOpen,
+    ratio: gearRatio,
+    canvasVisible: !diagramPanel.hidden,
+  }),
 };
 
 (window as unknown as { __ha: typeof debugApi }).__ha = debugApi;
@@ -922,6 +970,14 @@ const animate = (now: number) => {
   requestAnimationFrame(animate);
   const dt = Math.min(clock.getDelta(), 0.05);
   if (driveEnabled && !drivePaused) drive?.update(dt);
+
+  // The overlay pauses the 3D view but the transmission keeps advancing so
+  // the inset stays live; the next 3D frame resumes at the same angle.
+  if (diagramOpen) {
+    syncDiagram();
+    return;
+  }
+
   exploder?.update(dt);
   if (cameraMove) {
     updateCameraMove(now);
@@ -970,6 +1026,8 @@ ratioInput.addEventListener('input', () => {
 
 cutButton.addEventListener('click', () => setCutEnabled(!cutEnabled));
 driveButton.addEventListener('click', () => setDriveEnabled(!driveEnabled));
+diagramButton.addEventListener('click', openDiagram);
+diagramClose.addEventListener('click', closeDiagram);
 inputRpmInput.addEventListener('input', () => {
   drive?.setInputRpm(Number(inputRpmInput.value));
   updateDriveReadout();
@@ -1041,7 +1099,12 @@ window.addEventListener('pointerleave', () => {
 });
 
 window.addEventListener('keydown', (event) => {
-  if (event.key === 'Escape') selectPart(null, true);
+  if (event.key !== 'Escape') return;
+  if (diagramOpen) {
+    closeDiagram();
+    return;
+  }
+  selectPart(null, true);
 });
 
 controls.addEventListener('start', () => {

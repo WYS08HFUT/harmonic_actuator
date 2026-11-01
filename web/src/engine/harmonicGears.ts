@@ -95,23 +95,34 @@ interface ProfilePoint {
 const toothThicknessAtPitch = (p: GearParams): number =>
   (Math.PI * p.module) / 2 - 0.06 * p.module;
 
+/** External-tooth angular half-width at a radius: narrower toward the tip. */
+export function externalToothHalfAngle(p: GearParams, radius: number): number {
+  const halfArc =
+    toothThicknessAtPitch(p) / 2 -
+    (radius - p.fsPitchRadius) * Math.tan(PRESSURE_ANGLE);
+  return halfArc / radius;
+}
+
+/** Internal-tooth angular half-width at a radius: wider toward the inward tip. */
+export function internalToothHalfAngle(p: GearParams, radius: number): number {
+  const halfArc =
+    toothThicknessAtPitch(p) / 2 +
+    (p.csPitchRadius - radius) * Math.tan(PRESSURE_ANGLE);
+  return halfArc / radius;
+}
+
 /**
  * Flexspline external teeth, tooth 0 centred on psi=0.
  * Flat tip/root, 20 degree flanks, half-pitch backlash.
  */
 function externalToothProfile(p: GearParams): ProfilePoint[] {
   const pitchAngle = (Math.PI * 2) / p.zf;
-  const halfThickness = toothThicknessAtPitch(p) / 2;
   const points: ProfilePoint[] = [];
 
   for (let i = 0; i < p.zf; i += 1) {
     const center = i * pitchAngle;
-    const tipHalf =
-      (halfThickness + (p.fsTipRadius - p.fsPitchRadius) * Math.tan(PRESSURE_ANGLE)) /
-      p.fsTipRadius;
-    const rootHalf =
-      (halfThickness - (p.fsPitchRadius - p.fsRootRadius) * Math.tan(PRESSURE_ANGLE)) /
-      p.fsRootRadius;
+    const tipHalf = externalToothHalfAngle(p, p.fsTipRadius);
+    const rootHalf = externalToothHalfAngle(p, p.fsRootRadius);
 
     points.push({ angle: center - rootHalf, radius: p.fsRootRadius });
     points.push({ angle: center - tipHalf, radius: p.fsTipRadius });
@@ -133,17 +144,12 @@ function externalToothProfile(p: GearParams): ProfilePoint[] {
  */
 function internalToothProfile(p: GearParams): ProfilePoint[] {
   const pitchAngle = (Math.PI * 2) / p.zc;
-  const halfThickness = toothThicknessAtPitch(p) / 2;
   const points: ProfilePoint[] = [];
 
   for (let i = 0; i < p.zc; i += 1) {
     const center = (i + 0.5) * pitchAngle;
-    const tipHalf =
-      (halfThickness + (p.csPitchRadius - p.csTipRadius) * Math.tan(PRESSURE_ANGLE)) /
-      p.csTipRadius;
-    const rootHalf =
-      (halfThickness - (p.csRootRadius - p.csPitchRadius) * Math.tan(PRESSURE_ANGLE)) /
-      p.csRootRadius;
+    const tipHalf = internalToothHalfAngle(p, p.csTipRadius);
+    const rootHalf = internalToothHalfAngle(p, p.csRootRadius);
 
     points.push({ angle: center - rootHalf, radius: p.csRootRadius });
     points.push({ angle: center - tipHalf, radius: p.csTipRadius });

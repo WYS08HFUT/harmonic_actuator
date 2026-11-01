@@ -1,7 +1,13 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
-import { buildGearSet, gearParams, snapRatio } from './harmonicGears.ts';
+import {
+  buildGearSet,
+  externalToothHalfAngle,
+  gearParams,
+  internalToothHalfAngle,
+  snapRatio,
+} from './harmonicGears.ts';
 
 const close = (actual: number, expected: number, epsilon = 1e-9): void => {
   assert.ok(
@@ -61,6 +67,22 @@ test('wave generator stroke is twice the module at every ratio', () => {
 test('gearParams rejects ratios outside 20-100', () => {
   assert.throws(() => gearParams(19), /ratio/);
   assert.throws(() => gearParams(101), /ratio/);
+});
+
+test('flexspline teeth taper toward the tip while circular spline teeth widen inward', () => {
+  const p = gearParams(50);
+  assert.ok(
+    externalToothHalfAngle(p, p.fsTipRadius) < externalToothHalfAngle(p, p.fsRootRadius),
+    'external tooth must be narrower at the tip',
+  );
+  assert.ok(
+    internalToothHalfAngle(p, p.csTipRadius) > internalToothHalfAngle(p, p.csRootRadius),
+    'internal tooth must be wider at the inward tip',
+  );
+  assert.ok(
+    externalToothHalfAngle(p, p.fsTipRadius) < Math.PI / p.zf / 2,
+    'flexspline tooth must be narrower than half a pitch',
+  );
 });
 
 test('buildGearSet produces the five named harmonic children with finite bounds', () => {

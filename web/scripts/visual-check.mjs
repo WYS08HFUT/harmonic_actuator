@@ -123,6 +123,32 @@ try {
   await wait(1000);
   await shot('overview');
 
+  await page.click('#btn-diagram');
+  await wait(900);
+  const diagram = await page.evaluate(() => window.__ha.diagram());
+  if (!diagram.open || !diagram.canvasVisible) {
+    throw new Error(`diagram panel did not open: ${JSON.stringify(diagram)}`);
+  }
+  const staticLoaded = await page.evaluate(() => {
+    const image = document.querySelector('#diagram-static');
+    return Boolean(image && image.complete && image.naturalWidth > 0);
+  });
+  if (!staticLoaded) throw new Error('static section SVG did not load');
+  const insetA = await page.evaluate(() => window.__ha.drive());
+  await wait(500);
+  const insetB = await page.evaluate(() => window.__ha.drive());
+  if (!(insetB.waveAngle > insetA.waveAngle)) {
+    throw new Error('live inset is not advancing with the drive');
+  }
+  console.log('diagram check', JSON.stringify({ open: diagram.open, live: true }));
+  await shot('diagram');
+  await page.keyboard.press('Escape');
+  await wait(300);
+  const closed = await page.evaluate(() => window.__ha.diagram());
+  if (closed.open || closed.canvasVisible) {
+    throw new Error(`Escape did not close the diagram: ${JSON.stringify(closed)}`);
+  }
+
   await page.evaluate(() => {
     const slider = document.querySelector('#explode');
     slider.value = '20';

@@ -130,20 +130,27 @@
       <div class="diagram-shell">
         <header class="diagram-head">
           <div>
-            <p class="eyebrow">STRUCTURE · 50:1</p>
+            <p id="diagram-kicker" class="eyebrow">STRUCTURE · 50:1</p>
             <h2>轴向剖面与齿部啮合</h2>
           </div>
           <button id="diagram-close" class="btn btn-quiet" type="button">关闭 ×</button>
         </header>
         <div class="diagram-body">
-          <img
-            id="diagram-static"
-            src="./assets/harmonic_actuator_section_teaching.svg"
-            alt="HA-110 轴向剖面结构图"
-          />
-          <div class="diagram-inset">
-            <canvas id="diagram-canvas"></canvas>
+          <div class="diagram-figure">
+            <img
+              id="diagram-static"
+              src="./assets/harmonic_actuator_section_teaching.svg"
+              alt="HA-110 轴向剖面结构图"
+            />
           </div>
+          <aside class="diagram-side">
+            <div class="diagram-inset">
+              <canvas id="diagram-canvas"></canvas>
+            </div>
+            <p class="diagram-side-note">
+              上部为长轴附近齿部的实时局部放大：柔轮齿逐个进入刚轮齿槽，短轴处脱开。齿部按安装变形状态示意，壳体外廓为严格投影；3D 柔轮变形放大 2.5×。
+            </p>
+          </aside>
         </div>
       </div>
     </div>
