@@ -92,6 +92,14 @@ def check_rear() -> None:
     assert abs(bsize.X - 110.0) < 1e-6
     assert abs(bsize.Y - 110.0) < 1e-6
     assert abs(bsize.Z - 17.0) < 1e-6
+    # The bell posts are at PCD50; the cover must use the same circle.
+    screw_r = 25.0
+    screw = bd.Cylinder(1.25, 6.0, align=(bd.Align.CENTER, bd.Align.CENTER, bd.Align.MIN))
+    screw = screw.moved(
+        bd.Location((screw_r * math.cos(math.radians(45.0)), screw_r * math.sin(math.radians(45.0)), 0.0))
+    )
+    assert overlap_volume(cover, screw) < 1e-6, "rear cover screw hole is not at the bell post"
+    assert overlap_volume(bell, screw) < 1e-6, "bell post tapped hole is not at the cover screw"
 
     bearing = build_rear_bearing(p)
     assert bearing.label == "Rear_Bearing_6806"
@@ -161,6 +169,7 @@ def check_motor() -> None:
     assert wsize.X <= 92.0 + 1e-6 and wsize.Y <= 92.0 + 1e-6
     wbb = windings.bounding_box()
     assert abs(wbb.min.Z - 15.0) < 1e-6 and abs(wbb.max.Z - 51.0) < 1e-6
+    assert overlap_volume(windings, core) < 1e-3, overlap_volume(windings, core)
 
     magnets = build_rotor_magnets(p)
     assert magnets.label == "NdFeB_Rotor_Magnets"
@@ -248,6 +257,18 @@ def check_harmonic() -> None:
     fs_bore = bd.Cylinder(23.525, 0.2, align=(bd.Align.CENTER, bd.Align.CENTER, bd.Align.MIN))
     fs_bore = fs_bore.moved(bd.Location((0.0, 0.0, 66.9)))
     assert overlap_volume(fs, fs_bore) < 1e-6
+    # FS hub side is the clearance side of the 8×M3 joint.
+    fs_clear = bd.Cylinder(1.7, 5.0, align=(bd.Align.CENTER, bd.Align.CENTER, bd.Align.MIN))
+    fs_clear = fs_clear.moved(bd.Location((18.0, 0.0, 82.0)))
+    assert overlap_volume(fs, fs_clear) < 1e-6, "FS hub holes are not M3 clearance"
+    # Cam bolts are at PCD28 (r14); the FS hub bore must clear the hex socket.
+    cam_tool = bd.Cylinder(1.3, 14.0, align=(bd.Align.CENTER, bd.Align.CENTER, bd.Align.MIN))
+    cam_tool = cam_tool.moved(bd.Location((14.0, 0.0, 73.0)))
+    assert overlap_volume(fs, cam_tool) < 1e-6, "FS hub bore blocks the cam bolt socket"
+    # Ø44 spigot recess on the FS hub (the output flange has the male ring).
+    spigot_recess = bd.Cylinder(0.5, 2.0, align=(bd.Align.CENTER, bd.Align.CENTER, bd.Align.MIN))
+    spigot_recess = spigot_recess.moved(bd.Location((23.0, 0.0, 85.0)))
+    assert overlap_volume(fs, spigot_recess) < 1e-6, "FS hub has no Ø44 spigot recess"
 
     wg = build_wave_generator(p)
     assert wg.label == "Wave_Generator_Assembly"
@@ -272,14 +293,34 @@ def check_harmonic() -> None:
 
     # Tooth phase: at 0° an FS tooth sits in a CS space (no overlap);
     # at 90° an FS tooth lines up with a CS tooth (overlap).
+    # The 90° wedge must be tangential, not a radially-long box.
     wedge0 = bd.Box(4.0, 0.2, 0.2, align=(bd.Align.CENTER, bd.Align.CENTER, bd.Align.CENTER))
     wedge0 = wedge0.moved(bd.Location((25.5, 0.0, 67.0)))
-    wedge90 = bd.Box(4.0, 0.2, 0.2, align=(bd.Align.CENTER, bd.Align.CENTER, bd.Align.CENTER))
+    wedge90 = bd.Box(0.2, 4.0, 0.2, align=(bd.Align.CENTER, bd.Align.CENTER, bd.Align.CENTER))
     wedge90 = wedge90.moved(bd.Location((0.0, 25.5, 67.0)))
     ov0 = overlap_volume(fs & wedge0, cs & wedge0)
     ov90 = overlap_volume(fs & wedge90, cs & wedge90)
     assert ov0 < 1e-4, ov0
     assert ov90 > 1e-4, ov90
+
+    def phase_ok(fs_space_start: float, cs_space_start: float = 0.0) -> bool:
+        fs_pitch = 360.0 / p.zf
+        cs_pitch = 360.0 / p.zc
+        fs_tooth0 = (fs_space_start - fs_pitch / 2.0) % 360.0
+        cs_space0 = cs_space_start % 360.0
+        if abs(fs_tooth0 - cs_space0) > 1e-9:
+            return False
+        fs_angle = 90.0
+        k = (fs_angle - fs_tooth0) / fs_pitch
+        if abs(k - round(k)) > 1e-9:
+            return False
+        cs_tooth0 = cs_space_start + cs_pitch / 2.0
+        j = (fs_angle - cs_tooth0) / cs_pitch
+        return abs(j - round(j)) < 1e-9
+
+    assert phase_ok(1.8), "FS/CS phase does not align tooth 0 with space 0"
+    assert phase_ok(1.8, 0.0)
+    assert not phase_ok(1.8 + 360.0 / p.zf), "phase check fails to reject a one-tooth shift"
     print("PASS harmonic")
 
 
@@ -290,8 +331,16 @@ def check_output() -> None:
     assert len(of.solids()) == 1
     obb = of.bounding_box()
     assert abs(obb.size.X - 82.0) < 1e-6 and abs(obb.size.Y - 82.0) < 1e-6
-    assert abs(obb.min.Z - 87.0) < 1e-6 and abs(obb.max.Z - 122.0) < 1e-6
-    for z, expected in ((90.0, 48.0), (100.0, 70.0), (108.0, 74.0), (115.0, 82.0)):
+    assert abs(obb.min.Z - 85.0) < 1e-6 and abs(obb.max.Z - 122.0) < 1e-6
+    for z, expected in (
+        (86.0, 47.0),
+        (90.0, 48.0),
+        (92.5, 82.0),
+        (93.5, 70.0),
+        (100.0, 70.0),
+        (108.0, 74.0),
+        (115.0, 82.0),
+    ):
         sx, sy = _slice_size(of, z)
         assert abs(sx - expected) < 0.05, (z, sx, expected)
         assert abs(sy - expected) < 0.05, (z, sy, expected)
@@ -307,9 +356,11 @@ def check_output() -> None:
     m5_thru = bd.Cylinder(2.6, 12.0, align=(bd.Align.CENTER, bd.Align.CENTER, bd.Align.MIN))
     m5_thru = m5_thru.moved(bd.Location((32.0, 0.0, 110.0)))
     assert overlap_volume(of, m5_thru) < 1e-6
-    fs_bolt = bd.Cylinder(1.7, 6.0, align=(bd.Align.CENTER, bd.Align.CENTER, bd.Align.MIN))
-    fs_bolt = fs_bolt.moved(bd.Location((18.0, 0.0, 87.0)))
-    assert overlap_volume(of, fs_bolt) < 1e-6
+    # FS joint: the output-flange nose must be tapped (M3 core Ø2.5) because
+    # the FS hub side is the clearance side.
+    fs_tap = bd.Cylinder(1.5, 6.0, align=(bd.Align.CENTER, bd.Align.CENTER, bd.Align.MIN))
+    fs_tap = fs_tap.moved(bd.Location((18.0, 0.0, 87.0)))
+    assert overlap_volume(of, fs_tap) > 1e-3, "output flange nose is not tapped for the FS joint"
     cs = build_circular_spline(p)
     assert overlap_volume(of, cs) < 1e-6
 
@@ -411,7 +462,6 @@ def check_assembly() -> None:
     top = {child.label: child for child in assy.children}
     excluded = {
         frozenset(("Circular_Spline_Ring", "Flexspline_Cup")),
-        frozenset(("Frameless_Stator_Core", "Copper_Stator_Windings")),
         frozenset(("Wave_Generator_Assembly", "Flexspline_Cup")),
     }
     labels = sorted(top)
@@ -431,14 +481,42 @@ def check_assembly() -> None:
     body = top["Body_Housing"]
     of = top["Output_Flange"]
     assert closest_points(cs, fs).distance < 1e-3
-    assert overlap_volume(wg, fs) < 5.0
+    fs_cs_overlap = overlap_volume(cs, fs)
+    assert 0.0 <= fs_cs_overlap < 250.0, fs_cs_overlap
+    wg_cam = next(c for c in wg.children if c.label == "Wave_Generator_Cam")
+    wg_balls = next(c for c in wg.children if c.label == "Wave_Generator_Balls")
+    wg_race = next(c for c in wg.children if c.label == "Wave_Generator_Flexible_Race")
+    assert overlap_volume(wg_cam, fs) < 1e-3, "WG cam collides with FS"
+    assert overlap_volume(wg_balls, fs) < 1e-3, "WG balls collide with FS"
+    assert overlap_volume(wg_race, fs) < 5.0, "WG race–FS preload exceeds 5 mm³"
     c_outer = next(c for c in crb.children if c.label == "Cross_Roller_Outer_Race")
     c_inner = next(c for c in crb.children if c.label == "Cross_Roller_Inner_Race")
     c_cage = next(c for c in crb.children if c.label == "Cross_Roller_Cage")
+    assert closest_points(of, c_inner).distance < 1e-3, "CRB inner ring lacks a rotating shoulder"
+    assert closest_points(body, c_inner).distance >= 0.9, "CRB inner ring rubs the static body"
     assert closest_points(c_cage, c_outer).distance < 0.01
     assert closest_points(c_cage, c_inner).distance < 0.01
-    assert overlap_volume(c_cage, c_outer) < 5.0
-    assert overlap_volume(c_cage, c_inner) < 5.0
+    assert overlap_volume(c_cage, c_outer) < 1.0
+    assert overlap_volume(c_cage, c_inner) < 1.0
+
+    # Fastener alignment/access for the remaining joints.
+    bell = top["Rear_End_Bell"]
+    rotor = top["Rotor_Hub"]
+    cap = top["Output_Cap_Mount_Flange"]
+    bell_screw = bd.Cylinder(1.25, 16.0, align=(bd.Align.CENTER, bd.Align.CENTER, bd.Align.MIN))
+    bell_screw = bell_screw.moved(bd.Location((50.0, 0.0, 0.0)))
+    assert overlap_volume(bell, bell_screw) < 1e-6, "bell/body screw path blocked"
+    assert overlap_volume(body, bell_screw) < 1e-6
+    cap_x = 55.0 * math.cos(math.radians(22.5))
+    cap_y = 55.0 * math.sin(math.radians(22.5))
+    cap_screw = bd.Cylinder(1.25, 14.0, align=(bd.Align.CENTER, bd.Align.CENTER, bd.Align.MIN))
+    cap_screw = cap_screw.moved(bd.Location((cap_x, cap_y, 106.0)))
+    assert overlap_volume(cap, cap_screw) < 1e-6, "cap/body screw path blocked"
+    assert overlap_volume(body, cap_screw) < 1e-6
+    cam_screw = bd.Cylinder(1.25, 15.0, align=(bd.Align.CENTER, bd.Align.CENTER, bd.Align.MIN))
+    cam_screw = cam_screw.moved(bd.Location((14.0, 0.0, 58.0)))
+    assert overlap_volume(wg_cam, cam_screw) < 1e-6, "cam/rotor screw path blocked"
+    assert overlap_volume(rotor, cam_screw) < 1e-6
 
     crb_path = bd.Cylinder(50.0, 19.0, align=(bd.Align.CENTER, bd.Align.CENTER, bd.Align.MIN))
     crb_path = crb_path.moved(bd.Location((0.0, 0.0, 93.0)))
@@ -472,6 +550,13 @@ def check_assembly() -> None:
     assert {"Flexspline_Cup", "Wave_Generator_Assembly", "Output_Flange", "Body_Housing"} <= cut_labels
     cut_body = next(c for c in cut.children if c.label == "Body_Housing")
     assert cut_body.volume < body.volume
+    assert len(cut_body.solids()) == 1
+    cut_fs = next(c for c in cut.children if c.label == "Flexspline_Cup")
+    cut_wg = next(c for c in cut.children if c.label == "Wave_Generator_Assembly")
+    cut_of = next(c for c in cut.children if c.label == "Output_Flange")
+    assert abs(cut_fs.volume - fs.volume) < 1e-6, "cutaway should not touch the FS"
+    assert abs(cut_wg.volume - wg.volume) < 1e-6, "cutaway should not touch the WG"
+    assert abs(cut_of.volume - of.volume) < 1e-6, "cutaway should not touch the output flange"
     print("PASS assembly")
 
 
@@ -502,16 +587,34 @@ def check_assets() -> None:
         assert path.stat().st_size > 0, path
 
     glb = _glb_json(GLB)
-    names = {node.get("name") for node in glb.get("nodes", [])}
+    web_glb = _glb_json(WEB_GLB)
+    assert WEB_GLB.read_bytes() == GLB.read_bytes(), "web GLB is stale"
+    nodes = glb.get("nodes", [])
+    names = {node.get("name") for node in nodes}
     for label in PART_LABELS:
         assert label in names, label
+    assert len(names) == len(nodes), "duplicate GLB node names"
     assert len(glb.get("materials", [])) >= 10
-    assert all(len(mesh.get("primitives", [])) > 0 for mesh in glb.get("meshes", []))
+    meshes = glb.get("meshes", [])
+    assert meshes and all(len(mesh.get("primitives", [])) > 0 for mesh in meshes)
+    positions = [
+        a for a in glb.get("accessors", []) if a.get("type") == "VEC3" and "min" in a and "max" in a
+    ]
+    assert positions, "no VEC3 accessor bounds"
+    max_coord = max(max(a["max"][i] for a in positions) for i in range(3))
+    assert max_coord > 60.0, f"GLB is not numeric mm: max coordinate {max_coord}"
+    scene_nodes = glb.get("scenes", [{}])[0].get("nodes", [])
+    root = nodes[scene_nodes[0]] if scene_nodes else nodes[0]
+    rot = root.get("rotation")
+    assert rot is not None and abs(rot[0]) > 0.6, f"expected Y-up root rotation, got {rot}"
+    assert len(web_glb.get("nodes", [])) == len(nodes)
 
     manifest = json.loads(MANIFEST.read_text(encoding="utf-8"))
     assert manifest["id"] == "ha-110"
     assert manifest["units"] == "mm"
     assert manifest["axis"] == "Z"
+    assert manifest["gltf_up"] == "Y"
+    assert manifest["gltf_units"] == "mm"
     parts = manifest["parts"]
     assert len(parts) == 24, len(parts)
     assert {part["node"] for part in parts} == set(PART_LABELS)
@@ -528,6 +631,33 @@ def check_assets() -> None:
         "Wave_Generator_Balls",
         "Wave_Generator_Flexible_Race",
     }
+    cut_set = {part["node"] for part in parts if part["cut"]}
+    assert cut_set == {
+        "Body_Housing",
+        "Frameless_Stator_Core",
+        "Copper_Stator_Windings",
+        "Circular_Spline_Ring",
+        "Rear_End_Bell",
+        "Rear_Cover",
+        "Output_Cap_Mount_Flange",
+    }, cut_set
+    ghost_set = {part["node"] for part in parts if part["ghost_in_transmission"]}
+    assert ghost_set == {
+        "Body_Housing",
+        "Frameless_Stator_Core",
+        "Copper_Stator_Windings",
+        "Circular_Spline_Ring",
+        "Output_Cap_Mount_Flange",
+    }, ghost_set
+    child_groups = {part["node"]: part["child_groups"] for part in parts if "child_groups" in part}
+    assert child_groups == {
+        "Rear_Bearing_6806": {"Rear_Bearing_Inner": "input", "Rear_Bearing_Balls": "half_speed"},
+        "Front_Bearing_6806": {"Front_Bearing_Inner": "input", "Front_Bearing_Balls": "half_speed"},
+    }, child_groups
+    for groups in child_groups.values():
+        for child_node, group in groups.items():
+            assert child_node in names, child_node
+            assert group in {"input", "half_speed"}, group
     assert manifest["ratio"] == {"min": 20, "max": 100, "step": 0.5, "default": 50}
     assert manifest["input_speed"] == {
         "min": 0,

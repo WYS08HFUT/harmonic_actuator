@@ -5,7 +5,7 @@ import shutil
 import struct
 from pathlib import Path
 
-from build123d import export_gltf, export_step, export_stl
+from build123d import Unit, export_gltf, export_step, export_stl
 
 from cad.assembly import PART_LABELS, PART_SPECS, build_assembly, build_cutaway
 from cad.drawings import draw_sections
@@ -43,7 +43,8 @@ def export_all(p: ActuatorParams = DEFAULT) -> dict[str, Path]:
     export_step(assy, ASSEMBLY_STEP)
     export_step(cut, CUTAWAY_STEP)
     export_stl(cut, CUTAWAY_STL)
-    export_gltf(assy, GLB, binary=True)
+    # Keep numeric millimetres in the GLB (glTF root stays Y-up).
+    export_gltf(assy, GLB, unit=Unit.M, binary=True)
     shutil.copyfile(GLB, WEB_GLB)
 
     names = _glb_names(GLB)
@@ -55,6 +56,8 @@ def export_all(p: ActuatorParams = DEFAULT) -> dict[str, Path]:
         "title": "谐波关节模组 HA-110",
         "units": "mm",
         "axis": "Z",
+        "gltf_up": "Y",
+        "gltf_units": "mm",
         "parts": list(PART_SPECS),
         "ratio": {"min": 20, "max": 100, "step": 0.5, "default": 50},
         "input_speed": {"min": 0, "max": 3000, "default": 1000, "visual_scale": 0.05},

@@ -35,9 +35,13 @@ def build_output_flange(p: ActuatorParams) -> bd.Part:
         with BuildSketch(Plane.XZ):
             with BuildLine():
                 Polyline(
-                    (10.0, 87.0),
+                    (22.0, 85.0),
+                    (23.5, 85.0),
+                    (23.5, 87.0),
                     (24.0, 87.0),
-                    (24.0, 93.0),
+                    (24.0, 92.0),
+                    (41.0, 92.0),
+                    (41.0, 93.0),
                     (35.0, 93.0),
                     (35.0, 106.0),
                     (37.0, 106.0),
@@ -47,14 +51,16 @@ def build_output_flange(p: ActuatorParams) -> bd.Part:
                     (21.0, 122.0),
                     (21.0, 118.0),
                     (10.0, 118.0),
+                    (10.0, 87.0),
+                    (22.0, 87.0),
                     close=True,
                 )
             make_face()
         revolve(axis=Axis.Z)
-        # 8×M3 FS-hub bolts through the Ø48 nose
+        # 8×M3 FS-hub bolts: nose is tapped; screws enter from the FS side
         with Locations((0, 0, 87.0)):
             with PolarLocations(18.0, 8):
-                Cylinder(1.7, 6.0, align=(C, C, MIN), mode=Mode.SUBTRACT)
+                Cylinder(1.25, 6.0, align=(C, C, MIN), mode=Mode.SUBTRACT)
         # 2×Ø3 dowels between the FS bolts
         with Locations((0, 0, 87.0)):
             with PolarLocations(18.0, 2, start_angle=22.5):

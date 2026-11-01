@@ -67,4 +67,6 @@ npm run check:visual
 
 - `requirements.txt` 是 v1 的依赖清单；v2 通过 cadgen 自带的 build123d 0.13 环境运行，避免系统 Python 的 `OCP.Standard` 导入错误。
 - `web/` 使用 Vite + TypeScript + Three.js；视觉/交互检查使用本机 Chrome（`puppeteer-core`）。
-- 模型单位 mm，Z 轴为轴向；Web 加载时按 glTF Y-up 做一次坐标转换。
+- 模型单位 mm，Z 轴为轴向。GLB 是**数值毫米、根节点 Y-up**；manifest 的 `units:"mm"`/`axis:"Z"` 描述模型坐标，并带 `gltf_up:"Y"`/`gltf_units:"mm"`。Web 加载时按 `(x,y,z) → (x,z,-y)` 转换爆炸偏移和程序化齿形。
+- 当前 GLB 约 11.9 MB，高于 6 MB 目标；Web 阶段用 Meshopt/降网格优化，节点名保持不变。
+- v2.1 复核修复：后盖 4×M3 PCD50；柔轮毂 Ø47/Ø32；Ø44 H7/h6 止口；FS 8×M3 从柔轮侧进入、法兰侧攻丝；CRB 内圈由输出法兰 Z92–93 旋转肩台支撑，主体让位 r42；输出止口为 Ø42 H7 凹止口；定子—绕组零干涉；6806 内圈/球通过 manifest `child_groups` 旋转。

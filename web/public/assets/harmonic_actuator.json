@@ -3,6 +3,8 @@
   "title": "谐波关节模组 HA-110",
   "units": "mm",
   "axis": "Z",
+  "gltf_up": "Y",
+  "gltf_units": "mm",
   "parts": [
     {
       "node": "Rear_Cover",
@@ -13,7 +15,7 @@
         -75.0
       ],
       "explode_order": 10,
-      "cut": false,
+      "cut": true,
       "ghost_in_transmission": false,
       "procedural": false,
       "teaching": "rear_cover"
@@ -72,7 +74,11 @@
       "cut": false,
       "ghost_in_transmission": false,
       "procedural": false,
-      "teaching": "rear_bearing"
+      "teaching": "rear_bearing",
+      "child_groups": {
+        "Rear_Bearing_Inner": "input",
+        "Rear_Bearing_Balls": "half_speed"
+      }
     },
     {
       "node": "Rotor_Hub",
@@ -156,7 +162,11 @@
       "cut": false,
       "ghost_in_transmission": false,
       "procedural": false,
-      "teaching": "front_bearing"
+      "teaching": "front_bearing",
+      "child_groups": {
+        "Front_Bearing_Inner": "input",
+        "Front_Bearing_Balls": "half_speed"
+      }
     },
     {
       "node": "Body_Housing",

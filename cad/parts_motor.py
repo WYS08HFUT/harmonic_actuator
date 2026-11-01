@@ -80,12 +80,17 @@ def build_stator_core(p: ActuatorParams) -> bd.Part:
 def build_windings(p: ActuatorParams) -> bd.Part:
     """24 concentrated copper coils, Z15–51, with a central slot relief."""
     with BuildPart() as windings:
+        # Slot sides: r34–39, Z19.5–46.5, centered between the 24 teeth.
+        with Locations((0, 0, 19.5)):
+            with PolarLocations(36.4, p.stator_slots, start_angle=7.5):
+                Box(4.8, 5.4, 27.0, align=(C, C, MIN))
+        # End turns outside the core: r34–43.5, Z15–20 and 46–51.
         with Locations((0, 0, 15.0)):
-            with PolarLocations(38.75, p.stator_slots):
-                Box(9.5, 5.8, 36.0, align=(C, C, MIN))
-        with Locations((0, 0, 20.0)):
-            with PolarLocations(38.75, p.stator_slots):
-                Box(7.1, 3.3, 26.0, align=(C, C, MIN), mode=Mode.SUBTRACT)
+            with PolarLocations(38.75, p.stator_slots, start_angle=7.5):
+                Box(9.5, 5.8, 5.0, align=(C, C, MIN))
+        with Locations((0, 0, 46.0)):
+            with PolarLocations(38.75, p.stator_slots, start_angle=7.5):
+                Box(9.5, 5.8, 5.0, align=(C, C, MIN))
     part = windings.part
     part.label = "Copper_Stator_Windings"
     part.color = "#DB802E"

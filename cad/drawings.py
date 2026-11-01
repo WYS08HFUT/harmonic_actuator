@@ -61,8 +61,8 @@ def _svg(teaching: bool) -> str:
 
     p = []
     p.append(
-        '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 180" '
-        'width="960" height="720" font-family="Inter, Noto Sans SC, Arial, sans-serif">'
+        '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 182" '
+        'width="960" height="728" font-family="Inter, Noto Sans SC, Arial, sans-serif">'
     )
     p.append('<rect width="240" height="180" fill="#FBFAF7"/>')
     p.append(_text(30, 14, "HA-110 谐波关节模组", 10.5, "#1F2328", "700"))
@@ -107,6 +107,7 @@ def _svg(teaching: bool) -> str:
     p.append(_rect(26, 55, 58, 60, "#E8E6E0"))
     p.append(_rect(38, 55, 60, 74, "#E8E6E0"))
     p.append(_rect(38, 55, 74, 93, "#E8E6E0"))
+    p.append(_rect(38, 42, 92, 93, "#FBFAF7", 1.0, "none", 0))  # CRB inner-ring relief
     p.append(_rect(50, 55, 93, 106, "#E8E6E0"))
     p.append(_rect(51, 59, 106, 112, "#E8E6E0"))
 
@@ -114,14 +115,16 @@ def _svg(teaching: bool) -> str:
     p.append(_rect(26.15, 38, 60, 74, "#8A94A6"))     # CS body (space at 0°)
     p.append(_rect(fs_inner, fs_tip, 61, 73, "#AEB9C8"))  # FS tooth band
     p.append(_rect(fs_inner, fs_root, 73, 84, "#AEB9C8"))  # FS cup wall
-    p.append(_rect(15, fs_root, 82, 87, "#AEB9C8"))   # FS diaphragm
-    p.append(_rect(15, 23.5, 82, 87, "#AEB9C8"))      # FS hub
+    p.append(_rect(16, fs_root, 82, 87, "#AEB9C8"))   # FS diaphragm (Ø32 hub bore)
+    p.append(_rect(16, 23.5, 82, 87, "#AEB9C8"))      # FS hub
     p.append(_rect(wg_race_in, wg_race_out, 61, 73, "#DCE1E8"))  # WG race
     p.append(_rect(10, wg_cam, 61, 73, "#C08A3E"))    # WG cam
     p.append(_circle(wg_ball, 67, 1.25, "#DCE1E8"))   # WG ball
 
     # output flange / CRB / encoders / cap
-    p.append(_rect(10, 24, 87, 93, "#D9E0E8"))
+    p.append(_rect(22, 23.5, 85, 87, "#D9E0E8"))       # Ø44 spigot ring
+    p.append(_rect(10, 24, 87, 92, "#D9E0E8"))
+    p.append(_rect(10, 41, 92, 93, "#D9E0E8"))         # rotating CRB shoulder
     p.append(_rect(10, 35, 93, 106, "#D9E0E8"))
     p.append(_rect(10, 37, 106, 110, "#D9E0E8"))
     p.append(_rect(10, 41, 110, 122, "#D9E0E8"))

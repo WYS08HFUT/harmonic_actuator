@@ -40,6 +40,10 @@ def build_body_housing(p: ActuatorParams) -> bd.Part:
             Cylinder(38.0, 14.0, align=(C, C, MIN), mode=Mode.SUBTRACT)  # CS seat
         with Locations((0, 0, 74.0)):
             Cylinder(38.0, 19.0, align=(C, C, MIN), mode=Mode.SUBTRACT)  # FS cavity
+        # Relieve the static Z93 shoulder so the CRB inner ring seats only on
+        # the rotating output-flange shoulder (r35–41), not on the body.
+        with Locations((0, 0, 92.0)):
+            Cylinder(42.0, 1.0, align=(C, C, MIN), mode=Mode.SUBTRACT)
         with Locations((0, 0, 93.0)):
             Cylinder(50.0, 13.0, align=(C, C, MIN), mode=Mode.SUBTRACT)  # CRB seat
         with Locations((0, 0, 106.0)):

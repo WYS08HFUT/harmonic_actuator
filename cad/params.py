@@ -67,7 +67,7 @@ class ActuatorParams:
     fs_wall: float = 0.85
     fs_tooth_width: float = 12.0
     fs_hub_od: float = 47.0
-    fs_hub_id: float = 30.0
+    fs_hub_id: float = 32.0
     fs_web: float = 1.5
     fs_hub_len: float = 5.0
     cs_od: float = 76.0
@@ -128,7 +128,7 @@ class ActuatorParams:
     end_bell_bolt: str = "M3"
     rear_cover_od: float = 58.0
     rear_cover_hole_d: float = 24.0
-    rear_cover_bolt_pcd: float = 40.0
+    rear_cover_bolt_pcd: float = 50.0
     rear_cover_bolt_count: int = 4
 
     # ---- fits (nominal sizes; class in drawing notes) ----

@@ -100,8 +100,9 @@ def _spec(
     ghost: bool = False,
     procedural: bool = False,
     teaching: str | None = None,
+    child_groups: dict[str, str] | None = None,
 ) -> dict:
-    return {
+    spec = {
         "node": node,
         "group": ROTATION_GROUPS[node],
         "explode_offset": [0.0, 0.0, float(z_offset)],
@@ -111,20 +112,35 @@ def _spec(
         "procedural": procedural,
         "teaching": teaching or node.lower(),
     }
+    if child_groups:
+        spec["child_groups"] = child_groups
+    return spec
 
 
 PART_SPECS: tuple[dict, ...] = (
-    _spec("Rear_Cover", -75.0, 10, teaching="rear_cover"),
+    _spec("Rear_Cover", -75.0, 10, cut=True, teaching="rear_cover"),
     _spec("Input_Encoder_PCB", -70.0, 10, teaching="input_encoder_pcb"),
     _spec("Input_Encoder_Ring", -65.0, 10, teaching="input_encoder_ring"),
     _spec("Rear_End_Bell", -60.0, 9, cut=True, teaching="rear_end_bell"),
-    _spec("Rear_Bearing_6806", -50.0, 9, teaching="rear_bearing"),
+    _spec(
+        "Rear_Bearing_6806",
+        -50.0,
+        9,
+        teaching="rear_bearing",
+        child_groups={"Rear_Bearing_Inner": "input", "Rear_Bearing_Balls": "half_speed"},
+    ),
     _spec("Rotor_Hub", -35.0, 8, teaching="rotor"),
     _spec("Frameless_Stator_Core", -20.0, 7, cut=True, ghost=True, teaching="stator"),
     _spec("Copper_Stator_Windings", -25.0, 7, cut=True, ghost=True, teaching="windings"),
     _spec("NdFeB_Rotor_Magnets", -40.0, 8, teaching="magnets"),
     _spec("Carbon_Fiber_Sleeve", -45.0, 8, teaching="sleeve"),
-    _spec("Front_Bearing_6806", -10.0, 6, teaching="front_bearing"),
+    _spec(
+        "Front_Bearing_6806",
+        -10.0,
+        6,
+        teaching="front_bearing",
+        child_groups={"Front_Bearing_Inner": "input", "Front_Bearing_Balls": "half_speed"},
+    ),
     _spec("Body_Housing", 0.0, 0, cut=True, ghost=True, teaching="body"),
     _spec("Circular_Spline_Ring", 28.0, 4, cut=True, ghost=True, procedural=True, teaching="cs"),
     _spec("Flexspline_Cup", 20.0, 5, procedural=True, teaching="fs"),

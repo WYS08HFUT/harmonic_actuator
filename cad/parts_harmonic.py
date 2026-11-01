@@ -60,20 +60,25 @@ def build_flexspline(p: ActuatorParams) -> bd.Part:
         # Diaphragm web Z82–83.5
         with Locations((0, 0, 82.0)):
             Cylinder(24.375, 1.5, align=(C, C, MIN))
-            Cylinder(15.0, 1.5, align=(C, C, MIN), mode=Mode.SUBTRACT)
-        # Output hub Z82–87, Ø47/Ø30
+            Cylinder(p.fs_hub_id / 2.0, 1.5, align=(C, C, MIN), mode=Mode.SUBTRACT)
+        # Output hub Z82–87, Ø47/Ø32 (Ø32 clears the cam bolt socket)
         with Locations((0, 0, 82.0)):
             Cylinder(23.5, 5.0, align=(C, C, MIN))
-            Cylinder(15.0, 5.0, align=(C, C, MIN), mode=Mode.SUBTRACT)
-        # 8×M3 output-flange bolts on PCD36
+            Cylinder(p.fs_hub_id / 2.0, 5.0, align=(C, C, MIN), mode=Mode.SUBTRACT)
+        # 8×M3 output-flange bolts on PCD36; FS side is the clearance side
         with Locations((0, 0, 82.0)):
             with PolarLocations(18.0, 8):
-                Cylinder(1.25, 5.0, align=(C, C, MIN), mode=Mode.SUBTRACT)
+                Cylinder(1.7, 5.0, align=(C, C, MIN), mode=Mode.SUBTRACT)
         # 2×Ø3 dowels, clocked between the bolts
         with Locations((0, 0, 82.0)):
             with PolarLocations(18.0, 2, start_angle=22.5):
                 Cylinder(1.5, 5.0, align=(C, C, MIN), mode=Mode.SUBTRACT)
-    part = fs.part
+    # Ø44 × 2 spigot recess on the FS hub (output flange has the male ring).
+    with BuildPart() as recess_ring:
+        with Locations((0, 0, 85.0)):
+            Cylinder(23.5, 2.0, align=(C, C, MIN))
+            Cylinder(22.0, 2.0, align=(C, C, MIN), mode=Mode.SUBTRACT)
+    part = fs.part - recess_ring.part
     part.label = "Flexspline_Cup"
     part.color = "#AEB9C8"
     return part
