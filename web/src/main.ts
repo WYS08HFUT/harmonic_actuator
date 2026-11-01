@@ -814,7 +814,8 @@ const syncDiagram = (): void => {
     ratio: gearRatio,
     waveAngle: drive?.waveAngle ?? 0,
     outputAngle: drive?.outputAngle ?? 0,
-    inputRpm: Number(inputRpmInput.value),
+    inputRpm:
+      driveEnabled && !drivePaused && !reduceMotion ? Number(inputRpmInput.value) : 0,
   });
 };
 
@@ -915,6 +916,16 @@ const debugApi = {
     ratio: gearRatio,
     canvasVisible: !diagramPanel.hidden,
   }),
+  camera: () => ({
+    position: camera.position.toArray(),
+    target: controls.target.toArray(),
+  }),
+  motion: () => ({
+    reduceMotion,
+    driveEnabled,
+    autoRotate: controls.autoRotate,
+    explodeValue: explodeInput.value,
+  }),
 };
 
 (window as unknown as { __ha: typeof debugApi }).__ha = debugApi;
@@ -954,7 +965,7 @@ const boot = async () => {
     drive = new Drive(driveGroupsFor(loaded));
     drive.setRatio(loaded.manifest.ratio.default);
     drive.setInputRpm(Number(inputRpmInput.value));
-    setDriveEnabled(true);
+    setDriveEnabled(!reduceMotion);
 
     updateExplodeUI(0);
     frameModel(loadedBounds);
@@ -969,7 +980,7 @@ const clock = new THREE.Clock();
 const animate = (now: number) => {
   requestAnimationFrame(animate);
   const dt = Math.min(clock.getDelta(), 0.05);
-  if (driveEnabled && !drivePaused) drive?.update(dt);
+  if (driveEnabled && !drivePaused && !reduceMotion) drive?.update(dt);
 
   // The overlay pauses the 3D view but the transmission keeps advancing so
   // the inset stays live; the next 3D frame resumes at the same angle.
@@ -991,7 +1002,11 @@ const animate = (now: number) => {
 };
 
 explodeInput.addEventListener('input', () => {
-  const percent = Number(explodeInput.value);
+  let percent = Number(explodeInput.value);
+  if (reduceMotion) {
+    percent = Math.round(percent / 50) * 50;
+    explodeInput.value = String(percent);
+  }
   if (selected) selectPart(null, false);
   updateExplodeUI(percent);
   exploder?.setProgress(percent / 100);
@@ -1098,13 +1113,97 @@ window.addEventListener('pointerleave', () => {
   setHover(null);
 });
 
+const isFormTarget = (target: EventTarget | null): boolean =>
+  target instanceof Element &&
+  Boolean(target.closest('button,input,select,textarea,a,[contenteditable="true"]'));
+
+const cyclePart = (direction: number): void => {
+  if (!actuator || actuator.parts.length === 0) return;
+  const parts = actuator.parts;
+  const current = selected ? parts.indexOf(selected) : -1;
+  const next =
+    current < 0
+      ? direction > 0
+        ? 0
+        : parts.length - 1
+      : (current + direction + parts.length) % parts.length;
+  selectPart(parts[next]);
+};
+
+const rotateView = (deltaTheta: number, deltaPhi: number): void => {
+  cancelCameraMove();
+  const offset = camera.position.clone().sub(controls.target);
+  const spherical = new THREE.Spherical().setFromVector3(offset);
+  spherical.theta += deltaTheta;
+  spherical.phi = THREE.MathUtils.clamp(
+    spherical.phi + deltaPhi,
+    controls.minPolarAngle,
+    controls.maxPolarAngle,
+  );
+  camera.position.copy(controls.target).add(new THREE.Vector3().setFromSpherical(spherical));
+  controls.update();
+  hasInteracted = true;
+  autoFit = false;
+  controls.autoRotate = false;
+};
+
+const zoomView = (factor: number): void => {
+  cancelCameraMove();
+  const offset = camera.position.clone().sub(controls.target);
+  const distance = THREE.MathUtils.clamp(
+    offset.length() * factor,
+    controls.minDistance,
+    controls.maxDistance,
+  );
+  camera.position.copy(controls.target).add(offset.setLength(distance));
+  controls.update();
+  hasInteracted = true;
+  autoFit = false;
+  controls.autoRotate = false;
+};
+
 window.addEventListener('keydown', (event) => {
-  if (event.key !== 'Escape') return;
-  if (diagramOpen) {
-    closeDiagram();
+  if (event.key === 'Escape') {
+    if (diagramOpen) {
+      closeDiagram();
+      return;
+    }
+    selectPart(null, true);
     return;
   }
-  selectPart(null, true);
+  if (diagramOpen || isFormTarget(event.target)) return;
+
+  if (event.key === 'Tab') {
+    event.preventDefault();
+    cyclePart(event.shiftKey ? -1 : 1);
+    return;
+  }
+  if (event.key === 'Enter') {
+    if (!selected && hovered) selectPart(hovered);
+    return;
+  }
+  if (event.key === '+' || event.key === '=') {
+    event.preventDefault();
+    zoomView(0.86);
+    return;
+  }
+  if (event.key === '-') {
+    event.preventDefault();
+    zoomView(1.16);
+    return;
+  }
+  if (event.key.toLowerCase() === 'r') {
+    event.preventDefault();
+    resetCamera();
+    return;
+  }
+  if (event.key.startsWith('Arrow')) {
+    event.preventDefault();
+    if (event.key === 'ArrowLeft') rotateView(0.09, 0);
+    else if (event.key === 'ArrowRight') rotateView(-0.09, 0);
+    else if (event.key === 'ArrowUp') rotateView(0, -0.06);
+    else if (event.key === 'ArrowDown') rotateView(0, 0.06);
+  }
 });
 
 controls.addEventListener('start', () => {

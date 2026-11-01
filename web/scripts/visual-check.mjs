@@ -41,7 +41,74 @@ try {
     throw new Error(`output did not turn backwards: ${JSON.stringify({ driveStart, driveAfter })}`);
   }
   console.log('drive auto-run', JSON.stringify({ inputRpm: driveStart.inputRpm, ratio: driveStart.ratio }));
+
+  const shell = await page.evaluate(() => {
+    const canvas = document.querySelector('#scene-container canvas');
+    const ids = ['#btn-reset', '#explode', '#btn-cut', '#btn-drive', '#btn-diagram'];
+    const controls = ids.map((selector) => {
+      const element = document.querySelector(selector);
+      const rect = element?.getBoundingClientRect();
+      return { selector, width: rect?.width ?? 0, height: rect?.height ?? 0 };
+    });
+    return {
+      canvas: canvas ? { width: canvas.width, height: canvas.height } : null,
+      controls,
+    };
+  });
+  if (!shell.canvas || shell.canvas.width <= 0 || shell.canvas.height <= 0) {
+    throw new Error(`canvas missing or zero-sized: ${JSON.stringify(shell.canvas)}`);
+  }
+  const hiddenControl = shell.controls.find((control) => control.width <= 0 || control.height <= 0);
+  if (hiddenControl) throw new Error(`control not visible: ${JSON.stringify(hiddenControl)}`);
+  console.log('shell check', JSON.stringify({ canvas: shell.canvas, controls: shell.controls.length }));
+
+  await page.keyboard.press('Tab');
+  await wait(900);
+  const tabState = await page.evaluate(() => ({
+    selected: document.body.classList.contains('has-selection'),
+    title: document.querySelector('#part-title')?.textContent ?? '',
+  }));
+  if (!tabState.selected) throw new Error('Tab did not open a part card');
+  await page.keyboard.press('Escape');
+  await wait(900);
+  const cameraA = await page.evaluate(() => window.__ha.camera());
+  await page.keyboard.press('ArrowLeft');
+  await wait(300);
+  const cameraB = await page.evaluate(() => window.__ha.camera());
+  if (JSON.stringify(cameraA.position) === JSON.stringify(cameraB.position)) {
+    throw new Error('ArrowLeft did not rotate the camera');
+  }
+  await page.keyboard.press('=');
+  await wait(300);
+  const cameraC = await page.evaluate(() => window.__ha.camera());
+  if (JSON.stringify(cameraB.position) === JSON.stringify(cameraC.position)) {
+    throw new Error('+ did not zoom the camera');
+  }
+  await page.keyboard.press('r');
+  await wait(1000);
+  console.log('keyboard check', JSON.stringify({ tab: tabState.title, rotate: true, zoom: true }));
   await shot('initial');
+
+  await page.evaluate(() => {
+    const slider = document.querySelector('#explode');
+    slider.value = '100';
+    slider.dispatchEvent(new Event('input', { bubbles: true }));
+  });
+  await wait(2000);
+  const pauseA = await page.evaluate(() => window.__ha.drive());
+  await wait(400);
+  const pauseB = await page.evaluate(() => window.__ha.drive());
+  if (!pauseA.paused || pauseA.waveAngle !== pauseB.waveAngle) {
+    throw new Error(`explode did not pause the drive: ${JSON.stringify({ pauseA, pauseB })}`);
+  }
+  console.log('explode pause', JSON.stringify({ paused: pauseB.paused, value: '100' }));
+  await shot('explode');
+  await page.click('#btn-reset');
+  await wait(1100);
+  const resumed = await page.evaluate(() => window.__ha.drive());
+  if (!resumed.enabled || resumed.paused) {
+    throw new Error(`reset did not resume the drive: ${JSON.stringify(resumed)}`);
+  }
 
   await page.click('#btn-cut');
   await wait(900);
@@ -110,6 +177,28 @@ try {
   });
   await wait(500);
 
+  await page.click('#btn-view-overview');
+  await wait(1000);
+  await shot('drive-50');
+  await page.evaluate(() => {
+    const slider = document.querySelector('#ratio');
+    slider.value = '30';
+    slider.dispatchEvent(new Event('input', { bubbles: true }));
+  });
+  await wait(700);
+  const rpm30 = await page.$eval('#output-rpm', (element) => element.textContent ?? '');
+  if (!rpm30.includes('33.3')) {
+    throw new Error(`ratio 30 readout wrong: "${rpm30}"`);
+  }
+  console.log('drive 30', JSON.stringify({ outputRpm: rpm30.trim() }));
+  await shot('drive-30');
+  await page.evaluate(() => {
+    const slider = document.querySelector('#ratio');
+    slider.value = '50';
+    slider.dispatchEvent(new Event('input', { bubbles: true }));
+  });
+  await wait(500);
+
   await page.click('#btn-view-output');
   await wait(1100);
   const bodyOpacity = await page.evaluate(() => window.__ha.materialOpacity('Body_Housing'));
@@ -149,25 +238,61 @@ try {
     throw new Error(`Escape did not close the diagram: ${JSON.stringify(closed)}`);
   }
 
+  await page.setViewport({ width: 390, height: 844, deviceScaleFactor: 2 });
+  await page.reload({ waitUntil: 'networkidle0', timeout: 90_000 });
+  await wait(2400);
+  const mobile = await page.evaluate(() => {
+    const canvas = document.querySelector('#scene-container canvas');
+    const bar = document.querySelector('.console');
+    const rect = bar?.getBoundingClientRect();
+    return {
+      canvas: canvas ? { width: canvas.clientWidth, height: canvas.clientHeight } : null,
+      bar: rect ? { top: rect.top, bottom: rect.bottom, width: rect.width } : null,
+      viewport: { width: innerWidth, height: innerHeight },
+      scrollWidth: document.documentElement.scrollWidth,
+    };
+  });
+  if (!mobile.canvas || mobile.canvas.height <= 300) {
+    throw new Error(`mobile canvas too small: ${JSON.stringify(mobile.canvas)}`);
+  }
+  if (!mobile.bar || mobile.bar.top < 0 || mobile.bar.bottom > mobile.viewport.height + 1) {
+    throw new Error(`mobile control bar outside viewport: ${JSON.stringify(mobile.bar)}`);
+  }
+  if (mobile.scrollWidth > mobile.viewport.width + 1) {
+    throw new Error(`mobile horizontal overflow: ${JSON.stringify(mobile)}`);
+  }
+  console.log('mobile check', JSON.stringify(mobile));
+  await shot('mobile');
+
+  await page.setViewport({ width: 1440, height: 900, deviceScaleFactor: 1 });
+  await page.emulateMediaFeatures([{ name: 'prefers-reduced-motion', value: 'reduce' }]);
+  await page.reload({ waitUntil: 'networkidle0', timeout: 90_000 });
+  await wait(2400);
+  const motion = await page.evaluate(() => window.__ha.motion());
+  if (!motion.reduceMotion || motion.driveEnabled) {
+    throw new Error(`reduced motion did not start static: ${JSON.stringify(motion)}`);
+  }
   await page.evaluate(() => {
     const slider = document.querySelector('#explode');
-    slider.value = '20';
+    slider.value = '40';
     slider.dispatchEvent(new Event('input', { bubbles: true }));
   });
-  await wait(600);
-  const pauseA = await page.evaluate(() => window.__ha.drive());
   await wait(400);
-  const pauseB = await page.evaluate(() => window.__ha.drive());
-  if (!pauseA.paused || pauseA.waveAngle !== pauseB.waveAngle) {
-    throw new Error(`explode did not pause the drive: ${JSON.stringify({ pauseA, pauseB })}`);
+  const snapped = await page.$eval('#explode', (element) => element.value);
+  if (snapped !== '50') {
+    throw new Error(`reduced-motion explode did not snap to 50: "${snapped}"`);
   }
-  console.log('pause check', JSON.stringify({ paused: pauseB.paused }));
-  await page.click('#btn-reset');
-  await wait(400);
-  const resumed = await page.evaluate(() => window.__ha.drive());
-  if (!resumed.enabled || resumed.paused) {
-    throw new Error(`reset did not resume the drive: ${JSON.stringify(resumed)}`);
+  const reducedA = await page.evaluate(() => window.__ha.drive());
+  await wait(500);
+  const reducedB = await page.evaluate(() => window.__ha.drive());
+  if (reducedA.waveAngle !== reducedB.waveAngle) {
+    throw new Error('reduced motion still advances the drive');
   }
+  console.log('reduced motion check', JSON.stringify({ snapped, drive: reducedB.enabled }));
+  await page.click('#btn-diagram');
+  await wait(700);
+  await shot('reduced-motion');
+  await page.keyboard.press('Escape');
 
   if (errors.length) throw new Error(errors.join('\n'));
   console.log('visual check PASS');

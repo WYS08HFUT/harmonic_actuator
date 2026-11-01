@@ -521,7 +521,7 @@ harmonic_actuator_code/
 - `pixelRatio = min(devicePixelRatio, 2)`；关闭实时阴影，使用接触阴影贴片；不启用后处理。
 - 程序化齿形三角面预算 ≤ 40k；柔轮变形顶点更新 ≤ 15k/帧；移动端降采样。
 - 键盘：Tab/Shift+Tab 选零件，方向键旋转，+/- 缩放，Esc 取消/关闭面板，R 复位。
-- `prefers-reduced-motion`：关闭自动旋转、传动自动运行改为分档（关/50%/100%），二维放大窗静止。
+- `prefers-reduced-motion`：关闭自动旋转与传动自动运行（传动停在当前帧），爆炸滑块只取 0/50/100%，二维放大窗静止。
 
 ## 9. 验收标准
 

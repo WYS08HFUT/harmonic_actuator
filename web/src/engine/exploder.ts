@@ -12,7 +12,7 @@ export const explodeFactor = (
   maxOrder: number,
   reducedMotion: boolean,
 ): number => {
-  const value = reducedMotion ? (progress >= 0.5 ? 1 : 0) : clamp01(progress);
+  const value = reducedMotion ? Math.round(clamp01(progress) * 2) / 2 : clamp01(progress);
   const max = Math.max(1, maxOrder);
   const delay = (order / max) * 0.45;
   const local = clamp01((value - delay) / (1 - delay));
