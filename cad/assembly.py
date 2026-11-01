@@ -91,6 +91,56 @@ ROTATION_GROUPS: dict[str, str] = {
 }
 
 
+def _spec(
+    node: str,
+    z_offset: float,
+    order: int,
+    *,
+    cut: bool = False,
+    ghost: bool = False,
+    procedural: bool = False,
+    teaching: str | None = None,
+) -> dict:
+    return {
+        "node": node,
+        "group": ROTATION_GROUPS[node],
+        "explode_offset": [0.0, 0.0, float(z_offset)],
+        "explode_order": order,
+        "cut": cut,
+        "ghost_in_transmission": ghost,
+        "procedural": procedural,
+        "teaching": teaching or node.lower(),
+    }
+
+
+PART_SPECS: tuple[dict, ...] = (
+    _spec("Rear_Cover", -75.0, 10, teaching="rear_cover"),
+    _spec("Input_Encoder_PCB", -70.0, 10, teaching="input_encoder_pcb"),
+    _spec("Input_Encoder_Ring", -65.0, 10, teaching="input_encoder_ring"),
+    _spec("Rear_End_Bell", -60.0, 9, cut=True, teaching="rear_end_bell"),
+    _spec("Rear_Bearing_6806", -50.0, 9, teaching="rear_bearing"),
+    _spec("Rotor_Hub", -35.0, 8, teaching="rotor"),
+    _spec("Frameless_Stator_Core", -20.0, 7, cut=True, ghost=True, teaching="stator"),
+    _spec("Copper_Stator_Windings", -25.0, 7, cut=True, ghost=True, teaching="windings"),
+    _spec("NdFeB_Rotor_Magnets", -40.0, 8, teaching="magnets"),
+    _spec("Carbon_Fiber_Sleeve", -45.0, 8, teaching="sleeve"),
+    _spec("Front_Bearing_6806", -10.0, 6, teaching="front_bearing"),
+    _spec("Body_Housing", 0.0, 0, cut=True, ghost=True, teaching="body"),
+    _spec("Circular_Spline_Ring", 28.0, 4, cut=True, ghost=True, procedural=True, teaching="cs"),
+    _spec("Flexspline_Cup", 20.0, 5, procedural=True, teaching="fs"),
+    _spec("Wave_Generator_Cam", 12.0, 5, procedural=True, teaching="wg_cam"),
+    _spec("Wave_Generator_Balls", 12.0, 5, procedural=True, teaching="wg_balls"),
+    _spec("Wave_Generator_Flexible_Race", 12.0, 5, procedural=True, teaching="wg_race"),
+    _spec("Cross_Roller_Outer_Race", 48.0, 2, teaching="crb_outer"),
+    _spec("Cross_Roller_Inner_Race", 42.0, 2, teaching="crb_inner"),
+    _spec("Cross_Roller_Cage", 50.0, 2, teaching="crb_cage"),
+    _spec("Output_Flange", 35.0, 3, teaching="output_flange"),
+    _spec("Output_Encoder_Ring", 55.0, 1, teaching="output_encoder_ring"),
+    _spec("Output_Encoder_PCB", 60.0, 1, teaching="output_encoder_pcb"),
+    _spec("Output_Cap_Mount_Flange", 80.0, 0, cut=True, ghost=True, teaching="output_cap"),
+)
+
+
 def build_assembly(p: ActuatorParams = DEFAULT) -> Compound:
     """Compose the full neutral-state actuator in world coordinates."""
     return Compound(

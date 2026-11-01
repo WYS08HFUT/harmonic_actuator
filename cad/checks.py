@@ -1,5 +1,8 @@
+import json
 import math
+import struct
 from collections import Counter
+from pathlib import Path
 
 import build123d as bd
 from cadgen.geometry import closest_points, overlap_volume
@@ -472,6 +475,66 @@ def check_assembly() -> None:
     print("PASS assembly")
 
 
+ROOT = Path(__file__).resolve().parents[1]
+ASSEMBLY_STEP = ROOT / "models" / "harmonic_actuator_v2_assembly.step"
+CUTAWAY_STEP = ROOT / "models" / "harmonic_actuator_v2_cutaway.step"
+CUTAWAY_STL = ROOT / "models" / "harmonic_actuator_v2_cutaway.stl"
+GLB = ROOT / "models" / "harmonic_actuator_v2.glb"
+WEB_GLB = ROOT / "web" / "public" / "assets" / "harmonic_actuator_v2.glb"
+MANIFEST = ROOT / "web" / "public" / "assets" / "harmonic_actuator.json"
+
+
+def _glb_json(path: Path) -> dict:
+    with path.open("rb") as f:
+        magic, version, total = struct.unpack("<4sII", f.read(12))
+        assert magic == b"glTF" and version == 2
+        chunk_len, chunk_type = struct.unpack("<II", f.read(8))
+        assert chunk_type == 0x4E4F534A
+        return json.loads(f.read(chunk_len))
+
+
+def check_assets() -> None:
+    for path in (ASSEMBLY_STEP, CUTAWAY_STEP, CUTAWAY_STL, GLB, WEB_GLB, MANIFEST):
+        assert path.exists(), path
+        assert path.stat().st_size > 0, path
+
+    glb = _glb_json(GLB)
+    names = {node.get("name") for node in glb.get("nodes", [])}
+    for label in PART_LABELS:
+        assert label in names, label
+    assert len(glb.get("materials", [])) >= 10
+    assert all(len(mesh.get("primitives", [])) > 0 for mesh in glb.get("meshes", []))
+
+    manifest = json.loads(MANIFEST.read_text(encoding="utf-8"))
+    assert manifest["id"] == "ha-110"
+    assert manifest["units"] == "mm"
+    assert manifest["axis"] == "Z"
+    parts = manifest["parts"]
+    assert len(parts) == 24, len(parts)
+    assert {part["node"] for part in parts} == set(PART_LABELS)
+    for part in parts:
+        assert part["node"] in names
+        assert part["group"] in {"static", "input", "output", "half_speed"}
+        assert len(part["explode_offset"]) == 3
+        assert part["explode_order"] >= 0
+    procedural = {part["node"] for part in parts if part["procedural"]}
+    assert procedural == {
+        "Flexspline_Cup",
+        "Circular_Spline_Ring",
+        "Wave_Generator_Cam",
+        "Wave_Generator_Balls",
+        "Wave_Generator_Flexible_Race",
+    }
+    assert manifest["ratio"] == {"min": 20, "max": 100, "step": 0.5, "default": 50}
+    assert manifest["input_speed"] == {
+        "min": 0,
+        "max": 3000,
+        "default": 1000,
+        "visual_scale": 0.05,
+    }
+    print("PASS assets")
+
+
 if __name__ == "__main__":
     check_params()
     check_rear()
@@ -480,3 +543,4 @@ if __name__ == "__main__":
     check_harmonic()
     check_output()
     check_assembly()
+    check_assets()
