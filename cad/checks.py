@@ -1,3 +1,5 @@
+import math
+
 import build123d as bd
 from cadgen.geometry import closest_points, overlap_volume
 
@@ -15,6 +17,13 @@ from cad.parts_motor import (
     build_rotor_magnets,
     build_stator_core,
     build_windings,
+)
+from cad.parts_output import (
+    build_cross_roller_bearing,
+    build_output_cap,
+    build_output_encoder_pcb,
+    build_output_encoder_ring,
+    build_output_flange,
 )
 from cad.parts_rear import (
     build_input_encoder_pcb,
@@ -264,9 +273,95 @@ def check_harmonic() -> None:
     print("PASS harmonic")
 
 
+def check_output() -> None:
+    p = DEFAULT
+    of = build_output_flange(p)
+    assert of.label == "Output_Flange"
+    assert len(of.solids()) == 1
+    obb = of.bounding_box()
+    assert abs(obb.size.X - 82.0) < 1e-6 and abs(obb.size.Y - 82.0) < 1e-6
+    assert abs(obb.min.Z - 87.0) < 1e-6 and abs(obb.max.Z - 122.0) < 1e-6
+    for z, expected in ((90.0, 48.0), (100.0, 70.0), (108.0, 74.0), (115.0, 82.0)):
+        sx, sy = _slice_size(of, z)
+        assert abs(sx - expected) < 0.05, (z, sx, expected)
+        assert abs(sy - expected) < 0.05, (z, sy, expected)
+    bore = bd.Cylinder(10.0, 35.0, align=(bd.Align.CENTER, bd.Align.CENTER, bd.Align.MIN))
+    bore = bore.moved(bd.Location((0.0, 0.0, 87.0)))
+    assert overlap_volume(of, bore) < 1e-6
+    pilot = bd.Cylinder(21.0, 4.0, align=(bd.Align.CENTER, bd.Align.CENTER, bd.Align.MIN))
+    pilot = pilot.moved(bd.Location((0.0, 0.0, 118.0)))
+    assert overlap_volume(of, pilot) < 1e-6
+    m5_cb = bd.Cylinder(4.8, 4.5, align=(bd.Align.CENTER, bd.Align.CENTER, bd.Align.MIN))
+    m5_cb = m5_cb.moved(bd.Location((32.0, 0.0, 117.5)))
+    assert overlap_volume(of, m5_cb) < 1e-6
+    m5_thru = bd.Cylinder(2.6, 12.0, align=(bd.Align.CENTER, bd.Align.CENTER, bd.Align.MIN))
+    m5_thru = m5_thru.moved(bd.Location((32.0, 0.0, 110.0)))
+    assert overlap_volume(of, m5_thru) < 1e-6
+    fs_bolt = bd.Cylinder(1.7, 6.0, align=(bd.Align.CENTER, bd.Align.CENTER, bd.Align.MIN))
+    fs_bolt = fs_bolt.moved(bd.Location((18.0, 0.0, 87.0)))
+    assert overlap_volume(of, fs_bolt) < 1e-6
+    cs = build_circular_spline(p)
+    assert overlap_volume(of, cs) < 1e-6
+
+    crb = build_cross_roller_bearing(p)
+    assert crb.label == "Cross_Roller_Bearing_Assembly"
+    assert len(crb.children) == 3
+    clabels = {child.label for child in crb.children}
+    assert clabels == {
+        "Cross_Roller_Outer_Race",
+        "Cross_Roller_Inner_Race",
+        "Cross_Roller_Cage",
+    }
+    outer = next(c for c in crb.children if c.label == "Cross_Roller_Outer_Race")
+    inner = next(c for c in crb.children if c.label == "Cross_Roller_Inner_Race")
+    cage = next(c for c in crb.children if c.label == "Cross_Roller_Cage")
+    assert len(outer.solids()) == 1 and len(inner.solids()) == 1
+    obb = outer.bounding_box()
+    assert abs(obb.size.X - 100.0) < 1e-6 and abs(obb.size.Y - 100.0) < 1e-6
+    assert abs(obb.min.Z - 93.0) < 1e-6 and abs(obb.max.Z - 106.0) < 1e-6
+    ibb = inner.bounding_box()
+    assert abs(ibb.size.X - 82.0) < 1e-6 and abs(ibb.size.Y - 82.0) < 1e-6
+    assert len(cage.solids()) == 36
+    assert overlap_volume(outer, inner) < 1e-6
+    assert closest_points(cage, inner).distance < 0.01
+    assert closest_points(cage, outer).distance < 0.01
+
+    enc_ring = build_output_encoder_ring(p)
+    assert enc_ring.label == "Output_Encoder_Ring"
+    erbb = enc_ring.bounding_box()
+    assert abs(erbb.size.X - 78.0) < 1e-6 and abs(erbb.size.Y - 78.0) < 1e-6
+    assert abs(erbb.min.Z - 106.0) < 1e-6 and abs(erbb.max.Z - 110.0) < 1e-6
+
+    pcb = build_output_encoder_pcb(p)
+    assert pcb.label == "Output_Encoder_PCB"
+    pbb = pcb.bounding_box()
+    dims = sorted([round(pbb.size.X, 6), round(pbb.size.Y, 6), round(pbb.size.Z, 6)])
+    assert dims == [1.6, 12.0, 20.0], dims
+    assert abs(pbb.min.X - 40.0) < 1e-6
+
+    cap = build_output_cap(p)
+    assert cap.label == "Output_Cap_Mount_Flange"
+    assert len(cap.solids()) == 1
+    cbb = cap.bounding_box()
+    assert abs(cbb.size.X - 118.0) < 1e-6 and abs(cbb.size.Y - 118.0) < 1e-6
+    assert abs(cbb.min.Z - 106.0) < 1e-6 and abs(cbb.max.Z - 120.0) < 1e-6
+    cap_id = bd.Cylinder(43.0, 14.0, align=(bd.Align.CENTER, bd.Align.CENTER, bd.Align.MIN))
+    cap_id = cap_id.moved(bd.Location((0.0, 0.0, 106.0)))
+    assert overlap_volume(cap, cap_id) < 1e-6
+    m4 = bd.Cylinder(2.0, 6.0, align=(bd.Align.CENTER, bd.Align.CENTER, bd.Align.MIN))
+    m4 = m4.moved(bd.Location((48.0, 0.0, 114.0)))
+    assert overlap_volume(cap, m4) < 1e-6
+    m3 = bd.Cylinder(1.7, 8.0, align=(bd.Align.CENTER, bd.Align.CENTER, bd.Align.MIN))
+    m3 = m3.moved(bd.Location((55.0 * math.cos(math.radians(22.5)), 55.0 * math.sin(math.radians(22.5)), 112.0)))
+    assert overlap_volume(cap, m3) < 1e-6
+    assert (86.0 - 82.0) / 2.0 >= 2.0 - 1e-6
+    print("PASS output")
+
+
 if __name__ == "__main__":
     check_params()
     check_rear()
     check_motor()
     check_body()
     check_harmonic()
+    check_output()
