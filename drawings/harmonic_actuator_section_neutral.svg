@@ -1,0 +1,84 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 180" width="960" height="720" font-family="Inter, Noto Sans SC, Arial, sans-serif">
+<rect width="240" height="180" fill="#FBFAF7"/>
+<text x="30.00" y="14.00" font-size="10.5" fill="#1F2328" font-weight="700" text-anchor="start">HA-110 谐波关节模组</text>
+<text x="30.00" y="20.00" font-size="4.8" fill="#5B6B7A" font-weight="400" text-anchor="start">轴向剖面 · 50:1 基准 · Ø110 机身 / Ø118 安装法兰</text>
+<text x="30.00" y="25.50" font-size="4.2" fill="#5B6B7A" font-weight="400" text-anchor="start">单位 mm · Zf=100 · Zc=102 · 总长 122</text>
+<line x1="30.00" y1="43.00" x2="30.00" y2="165.00" stroke="#B8B2A8" stroke-width="0.4" stroke-dasharray="2 1.2 0.5 1.2"/>
+<rect x="59.00" y="162.00" width="26.00" height="3.00" fill="#E8E6E0" fill-opacity="1.0" stroke="#1F2328" stroke-width="0.45"/>
+<rect x="70.00" y="155.00" width="15.00" height="10.00" fill="#E8E6E0" fill-opacity="1.0" stroke="#1F2328" stroke-width="0.45"/>
+<rect x="62.00" y="155.00" width="23.00" height="1.00" fill="#E8E6E0" fill-opacity="1.0" stroke="#1F2328" stroke-width="0.45"/>
+<rect x="51.00" y="148.00" width="12.00" height="7.50" fill="#E8E6E0" fill-opacity="1.0" stroke="#1F2328" stroke-width="0.45"/>
+<rect x="42.00" y="162.00" width="17.00" height="3.00" fill="#C4C9D1" fill-opacity="1.0" stroke="#1F2328" stroke-width="0.45"/>
+<rect x="42.00" y="160.40" width="18.00" height="1.60" fill="#1F6B3A" fill-opacity="0.9" stroke="#1F2328" stroke-width="0.45"/>
+<rect x="47.00" y="157.20" width="6.00" height="2.00" fill="#5A5F68" fill-opacity="1.0" stroke="#1F2328" stroke-width="0.45"/>
+<rect x="40.00" y="155.50" width="13.00" height="1.70" fill="#8A9099" fill-opacity="1.0" stroke="#1F2328" stroke-width="0.45"/>
+<circle cx="48.00" cy="151.50" r="1.50" fill="#DCE1E8" stroke="#1F2328" stroke-width="0.4"/>
+<rect x="49.50" y="148.00" width="1.50" height="7.00" fill="#DCE1E8" fill-opacity="1.0" stroke="#1F2328" stroke-width="0.45"/>
+<rect x="45.00" y="148.00" width="1.50" height="7.00" fill="#DCE1E8" fill-opacity="1.0" stroke="#1F2328" stroke-width="0.45"/>
+<rect x="40.00" y="145.00" width="5.00" height="10.50" fill="#8A9099" fill-opacity="1.0" stroke="#1F2328" stroke-width="0.45"/>
+<rect x="40.00" y="119.00" width="19.10" height="26.00" fill="#8A9099" fill-opacity="1.0" stroke="#1F2328" stroke-width="0.45"/>
+<rect x="59.10" y="119.00" width="3.00" height="26.00" fill="#3A3F47" fill-opacity="1.0" stroke="#1F2328" stroke-width="0.45"/>
+<rect x="62.10" y="119.00" width="1.00" height="26.00" fill="#2A2D33" fill-opacity="1.0" stroke="#1F2328" stroke-width="0.45"/>
+<rect x="64.00" y="119.00" width="12.00" height="26.00" fill="#5B616B" fill-opacity="1.0" stroke="#1F2328" stroke-width="0.45"/>
+<rect x="64.00" y="114.00" width="9.50" height="36.00" fill="#DB802E" fill-opacity="0.85" stroke="#1F2328" stroke-width="0.45"/>
+<rect x="40.00" y="107.00" width="5.00" height="12.00" fill="#8A9099" fill-opacity="1.0" stroke="#1F2328" stroke-width="0.45"/>
+<rect x="40.00" y="104.00" width="8.00" height="3.00" fill="#8A9099" fill-opacity="1.0" stroke="#1F2328" stroke-width="0.45"/>
+<circle cx="48.00" cy="110.50" r="1.50" fill="#DCE1E8" stroke="#1F2328" stroke-width="0.4"/>
+<rect x="49.50" y="107.00" width="1.50" height="7.00" fill="#DCE1E8" fill-opacity="1.0" stroke="#1F2328" stroke-width="0.45"/>
+<rect x="45.00" y="107.00" width="1.50" height="7.00" fill="#DCE1E8" fill-opacity="1.0" stroke="#1F2328" stroke-width="0.45"/>
+<rect x="76.00" y="114.00" width="9.00" height="41.00" fill="#E8E6E0" fill-opacity="1.0" stroke="#1F2328" stroke-width="0.45"/>
+<rect x="51.00" y="107.00" width="34.00" height="7.00" fill="#E8E6E0" fill-opacity="1.0" stroke="#1F2328" stroke-width="0.45"/>
+<rect x="56.00" y="105.00" width="29.00" height="2.00" fill="#E8E6E0" fill-opacity="1.0" stroke="#1F2328" stroke-width="0.45"/>
+<rect x="68.00" y="91.00" width="17.00" height="14.00" fill="#E8E6E0" fill-opacity="1.0" stroke="#1F2328" stroke-width="0.45"/>
+<rect x="68.00" y="72.00" width="17.00" height="19.00" fill="#E8E6E0" fill-opacity="1.0" stroke="#1F2328" stroke-width="0.45"/>
+<rect x="80.00" y="59.00" width="5.00" height="13.00" fill="#E8E6E0" fill-opacity="1.0" stroke="#1F2328" stroke-width="0.45"/>
+<rect x="81.00" y="53.00" width="8.00" height="6.00" fill="#E8E6E0" fill-opacity="1.0" stroke="#1F2328" stroke-width="0.45"/>
+<rect x="56.15" y="91.00" width="11.85" height="14.00" fill="#8A94A6" fill-opacity="1.0" stroke="#1F2328" stroke-width="0.45"/>
+<rect x="53.52" y="92.00" width="1.98" height="12.00" fill="#AEB9C8" fill-opacity="1.0" stroke="#1F2328" stroke-width="0.45"/>
+<rect x="53.52" y="81.00" width="0.85" height="11.00" fill="#AEB9C8" fill-opacity="1.0" stroke="#1F2328" stroke-width="0.45"/>
+<rect x="45.00" y="78.00" width="9.38" height="5.00" fill="#AEB9C8" fill-opacity="1.0" stroke="#1F2328" stroke-width="0.45"/>
+<rect x="45.00" y="78.00" width="8.50" height="5.00" fill="#AEB9C8" fill-opacity="1.0" stroke="#1F2328" stroke-width="0.45"/>
+<rect x="52.33" y="92.00" width="1.00" height="12.00" fill="#DCE1E8" fill-opacity="1.0" stroke="#1F2328" stroke-width="0.45"/>
+<rect x="40.00" y="92.00" width="9.82" height="12.00" fill="#C08A3E" fill-opacity="1.0" stroke="#1F2328" stroke-width="0.45"/>
+<circle cx="51.08" cy="98.00" r="1.25" fill="#DCE1E8" stroke="#1F2328" stroke-width="0.4"/>
+<rect x="40.00" y="72.00" width="14.00" height="6.00" fill="#D9E0E8" fill-opacity="1.0" stroke="#1F2328" stroke-width="0.45"/>
+<rect x="40.00" y="59.00" width="25.00" height="13.00" fill="#D9E0E8" fill-opacity="1.0" stroke="#1F2328" stroke-width="0.45"/>
+<rect x="40.00" y="55.00" width="27.00" height="4.00" fill="#D9E0E8" fill-opacity="1.0" stroke="#1F2328" stroke-width="0.45"/>
+<rect x="40.00" y="43.00" width="31.00" height="12.00" fill="#D9E0E8" fill-opacity="1.0" stroke="#1F2328" stroke-width="0.45"/>
+<rect x="40.00" y="43.00" width="11.00" height="4.00" fill="#FBFAF7" fill-opacity="1.0" stroke="none" stroke-width="0"/>
+<rect x="57.20" y="43.00" width="9.60" height="4.50" fill="#FBFAF7" fill-opacity="1.0" stroke="none" stroke-width="0"/>
+<rect x="48.00" y="72.00" width="1.70" height="6.00" fill="#FBFAF7" fill-opacity="1.0" stroke="none" stroke-width="0"/>
+<rect x="74.00" y="59.00" width="6.00" height="13.00" fill="#DCE1E8" fill-opacity="1.0" stroke="#1F2328" stroke-width="0.45"/>
+<rect x="65.00" y="59.00" width="6.00" height="13.00" fill="#DCE1E8" fill-opacity="1.0" stroke="#1F2328" stroke-width="0.45"/>
+<circle cx="72.50" cy="65.50" r="2.00" fill="#DCE1E8" stroke="#1F2328" stroke-width="0.4"/>
+<rect x="67.00" y="55.00" width="2.00" height="4.00" fill="#5A5F68" fill-opacity="1.0" stroke="#1F2328" stroke-width="0.45"/>
+<rect x="70.00" y="55.40" width="12.00" height="1.60" fill="#1F6B3A" fill-opacity="0.9" stroke="#1F2328" stroke-width="0.45"/>
+<rect x="73.00" y="53.00" width="8.00" height="6.00" fill="#E8E6E0" fill-opacity="1.0" stroke="#1F2328" stroke-width="0.45"/>
+<rect x="73.00" y="45.00" width="16.00" height="8.00" fill="#E8E6E0" fill-opacity="1.0" stroke="#1F2328" stroke-width="0.45"/>
+<rect x="70.00" y="54.00" width="11.00" height="3.00" fill="#FBFAF7" fill-opacity="1.0" stroke="none" stroke-width="0"/>
+<rect x="81.00" y="54.00" width="8.00" height="3.00" fill="#FBFAF7" fill-opacity="1.0" stroke="none" stroke-width="0"/>
+<rect x="76.00" y="45.00" width="4.00" height="6.00" fill="#FBFAF7" fill-opacity="1.0" stroke="none" stroke-width="0"/>
+<rect x="83.00" y="45.00" width="4.00" height="8.00" fill="#FBFAF7" fill-opacity="1.0" stroke="none" stroke-width="0"/>
+<line x1="80.00" y1="125.00" x2="110.00" y2="30.80" stroke="#1F2328" stroke-width="0.3" stroke-dasharray="1.2 1.2"/><circle cx="80.00" cy="125.00" r="0.7" fill="#1F2328"/><text x="112.00" y="32.00" font-size="4.2" fill="#1F2328" font-weight="400" text-anchor="start">散热壳体 Ø110 / 法兰 Ø118</text>
+<line x1="70.00" y1="135.00" x2="110.00" y2="38.80" stroke="#1F2328" stroke-width="0.3" stroke-dasharray="1.2 1.2"/><circle cx="70.00" cy="135.00" r="0.7" fill="#1F2328"/><text x="112.00" y="40.00" font-size="4.2" fill="#1F2328" font-weight="400" text-anchor="start">无框电机定子 + 铜绕组</text>
+<line x1="61.00" y1="135.00" x2="110.00" y2="46.80" stroke="#1F2328" stroke-width="0.3" stroke-dasharray="1.2 1.2"/><circle cx="61.00" cy="135.00" r="0.7" fill="#1F2328"/><text x="112.00" y="48.00" font-size="4.2" fill="#1F2328" font-weight="400" text-anchor="start">转子磁钢 + 碳纤维护套</text>
+<line x1="42.00" y1="131.00" x2="110.00" y2="54.80" stroke="#1F2328" stroke-width="0.3" stroke-dasharray="1.2 1.2"/><circle cx="42.00" cy="131.00" r="0.7" fill="#1F2328"/><text x="112.00" y="56.00" font-size="4.2" fill="#1F2328" font-weight="400" text-anchor="start">空心输入轴 Ø20</text>
+<line x1="50.00" y1="158.50" x2="110.00" y2="62.80" stroke="#1F2328" stroke-width="0.3" stroke-dasharray="1.2 1.2"/><circle cx="50.00" cy="158.50" r="0.7" fill="#1F2328"/><text x="112.00" y="64.00" font-size="4.2" fill="#1F2328" font-weight="400" text-anchor="start">输入端绝对值编码器</text>
+<line x1="77.00" y1="65.00" x2="110.00" y2="70.80" stroke="#1F2328" stroke-width="0.3" stroke-dasharray="1.2 1.2"/><circle cx="77.00" cy="65.00" r="0.7" fill="#1F2328"/><text x="112.00" y="72.00" font-size="4.2" fill="#1F2328" font-weight="400" text-anchor="start">交叉滚子轴承 RB7013</text>
+<line x1="62.00" y1="98.00" x2="110.00" y2="78.80" stroke="#1F2328" stroke-width="0.3" stroke-dasharray="1.2 1.2"/><circle cx="62.00" cy="98.00" r="0.7" fill="#1F2328"/><text x="112.00" y="80.00" font-size="4.2" fill="#1F2328" font-weight="400" text-anchor="start">刚轮 Zc=102 · i=50:1</text>
+<line x1="55.50" y1="87.00" x2="110.00" y2="86.80" stroke="#1F2328" stroke-width="0.3" stroke-dasharray="1.2 1.2"/><circle cx="55.50" cy="87.00" r="0.7" fill="#1F2328"/><text x="112.00" y="88.00" font-size="4.2" fill="#1F2328" font-weight="400" text-anchor="start">柔轮 Zf=100</text>
+<line x1="45.00" y1="98.00" x2="110.00" y2="94.80" stroke="#1F2328" stroke-width="0.3" stroke-dasharray="1.2 1.2"/><circle cx="45.00" cy="98.00" r="0.7" fill="#1F2328"/><text x="112.00" y="96.00" font-size="4.2" fill="#1F2328" font-weight="400" text-anchor="start">波发生器（椭圆）</text>
+<line x1="65.00" y1="49.00" x2="110.00" y2="102.80" stroke="#1F2328" stroke-width="0.3" stroke-dasharray="1.2 1.2"/><circle cx="65.00" cy="49.00" r="0.7" fill="#1F2328"/><text x="112.00" y="104.00" font-size="4.2" fill="#1F2328" font-weight="400" text-anchor="start">输出法兰 Ø82 · PCD Ø64</text>
+<line x1="75.00" y1="56.00" x2="110.00" y2="110.80" stroke="#1F2328" stroke-width="0.3" stroke-dasharray="1.2 1.2"/><circle cx="75.00" cy="56.00" r="0.7" fill="#1F2328"/><text x="112.00" y="112.00" font-size="4.2" fill="#1F2328" font-weight="400" text-anchor="start">输出端绝对值编码器</text>
+<line x1="85.00" y1="49.00" x2="110.00" y2="118.80" stroke="#1F2328" stroke-width="0.3" stroke-dasharray="1.2 1.2"/><circle cx="85.00" cy="49.00" r="0.7" fill="#1F2328"/><text x="112.00" y="120.00" font-size="4.2" fill="#1F2328" font-weight="400" text-anchor="start">输出盖 Ø118 · 8×M4 PCD96</text>
+<line x1="78.00" y1="51.00" x2="110.00" y2="126.80" stroke="#1F2328" stroke-width="0.3" stroke-dasharray="1.2 1.2"/><circle cx="78.00" cy="51.00" r="0.7" fill="#1F2328"/><text x="112.00" y="128.00" font-size="4.2" fill="#1F2328" font-weight="400" text-anchor="start">输出止口 Ø42 · 总长 122</text>
+<text x="30.00" y="176.00" font-size="4.2" fill="#5B6B7A" font-weight="400" text-anchor="start">Ø110 机身 / Ø118 安装法兰</text>
+<text x="30.00" y="179.00" font-size="4.2" fill="#5B6B7A" font-weight="400" text-anchor="start">Ø20 通孔 · Ø82 输出法兰 · PCD Ø64</text>
+<text x="113.00" y="142.00" font-size="4.0" fill="#5B6B7A" font-weight="400" text-anchor="start">中性状态 · 圆柔轮 / 中性波发生器</text>
+<defs><marker id="arrow-cu" markerWidth="6" markerHeight="6" refX="5" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 z" fill="#C2652A"/></marker><marker id="arrow-st" markerWidth="6" markerHeight="6" refX="5" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 z" fill="#5B6B7A"/></marker></defs>
+<rect x="110" y="148" width="120" height="26" fill="#F2F0EB" stroke="#B8B2A8" stroke-width="0.4"/>
+<text x="113.00" y="155.00" font-size="4.6" fill="#1F2328" font-weight="700" text-anchor="start">HA-110 谐波关节模组</text>
+<text x="113.00" y="161.00" font-size="3.8" fill="#5B6B7A" font-weight="400" text-anchor="start">轴向剖面 · 50:1 基准 · 单位 mm</text>
+<text x="113.00" y="167.00" font-size="3.8" fill="#5B6B7A" font-weight="400" text-anchor="start">Zf=100 · Zc=102 · i=50:1 · Ø110/Ø118</text>
+<text x="113.00" y="172.00" font-size="3.4" fill="#8A6A4A" font-weight="400" text-anchor="start">结构原理示意，最终参数以正式规格书为准</text>
+</svg>

@@ -8,6 +8,7 @@ from pathlib import Path
 from build123d import export_gltf, export_step, export_stl
 
 from cad.assembly import PART_LABELS, PART_SPECS, build_assembly, build_cutaway
+from cad.drawings import draw_sections
 from cad.params import DEFAULT, ActuatorParams
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -59,6 +60,7 @@ def export_all(p: ActuatorParams = DEFAULT) -> dict[str, Path]:
         "input_speed": {"min": 0, "max": 3000, "default": 1000, "visual_scale": 0.05},
     }
     MANIFEST.write_text(json.dumps(manifest, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    draw_sections(p)
 
     paths = {
         "assembly_step": ASSEMBLY_STEP,

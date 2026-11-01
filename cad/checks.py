@@ -482,6 +482,9 @@ CUTAWAY_STL = ROOT / "models" / "harmonic_actuator_v2_cutaway.stl"
 GLB = ROOT / "models" / "harmonic_actuator_v2.glb"
 WEB_GLB = ROOT / "web" / "public" / "assets" / "harmonic_actuator_v2.glb"
 MANIFEST = ROOT / "web" / "public" / "assets" / "harmonic_actuator.json"
+TEACHING_SVG = ROOT / "drawings" / "harmonic_actuator_section_teaching.svg"
+NEUTRAL_SVG = ROOT / "drawings" / "harmonic_actuator_section_neutral.svg"
+WEB_TEACHING_SVG = ROOT / "web" / "public" / "assets" / "harmonic_actuator_section_teaching.svg"
 
 
 def _glb_json(path: Path) -> dict:
@@ -535,6 +538,25 @@ def check_assets() -> None:
     print("PASS assets")
 
 
+def check_drawings() -> None:
+    for path in (TEACHING_SVG, NEUTRAL_SVG, WEB_TEACHING_SVG):
+        assert path.exists(), path
+        assert path.stat().st_size > 0, path
+    required = ("HA-110", "Ø110", "Ø118", "Ø20", "50:1", "Zf=100", "Zc=102")
+    teaching = TEACHING_SVG.read_text(encoding="utf-8")
+    neutral = NEUTRAL_SVG.read_text(encoding="utf-8")
+    for text in (teaching, neutral):
+        for token in required:
+            assert token in text, token
+    for token in ("长轴啮合", "短轴脱开", "扭矩路径", "反力路径", "齿部按安装变形状态示意"):
+        assert token in teaching, token
+    assert "齿部按安装变形状态示意" not in neutral
+    assert "中性状态" in neutral
+    assert "圆柔轮" in neutral
+    assert WEB_TEACHING_SVG.read_text(encoding="utf-8") == teaching
+    print("PASS drawings")
+
+
 if __name__ == "__main__":
     check_params()
     check_rear()
@@ -544,3 +566,4 @@ if __name__ == "__main__":
     check_output()
     check_assembly()
     check_assets()
+    check_drawings()
