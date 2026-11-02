@@ -1,72 +1,50 @@
-# HA-110 谐波关节模组 · 交互式原理页
+# HA-110 谐波关节模组
 
-一体化无框电机 + 谐波减速 + 双绝对值编码的关节模组。本仓库包含 **build123d v2 机械模型**、Web 资产导出，以及交互式原理页（`web/`）。
+一体化无框电机、谐波减速器、交叉滚子轴承与双绝对值编码器同轴集成的机器人关节模组。机身 Ø110，输出端安装法兰 Ø118，中心留 Ø20 走线通孔。
 
-- 设计稿：`docs/superpowers/specs/2026-11-01-harmonic-actuator-explainer-design.md`
-- 实现计划：`docs/superpowers/plans/2026-11-01-harmonic-actuator-cad-v2.md`、`...-web.md`
+**在线体验：https://wys08hfut.github.io/harmonic_actuator/**
 
-## 1. 当前状态
+## 产品特点
 
-- CAD v2：完成。Ø110 机身 / Ø118 输出端安装法兰；无框电机 + 100/102 谐波（50:1）+ 输出端 RB7013 交叉滚子轴承 + 双绝对值编码器；Ø20 通孔贯通。
-- Web：按 `...-web.md` 实现中；页面为浅色工业风的单屏 3D 工具，含拆解、剖切、传动、二维剖面面板。
+- **空间**：电机、减速器、轴承与编码器同轴叠进 Ø110 机身，中心 Ø20 通孔可直接走线，减少外部线缆与关节体积。
+- **传动**：无框电机直驱波发生器，柔轮 100 齿 / 刚轮 102 齿，齿差 2 齿，基准减速比 50:1；低背隙、高刚性、结构紧凑。
+- **控制**：输入端与输出端双绝对值编码器，上电即知关节位置；输出端交叉滚子轴承直接承担弯矩，刚性壳体减少变形。
+- **展示**：交互式三维原理页支持拆解、剖切、自动传动、连续减速比调节，以及带活动齿部放大窗的二维结构图。
 
-## 2. CAD v2
+## 交互式原理页
 
-所有 CAD 脚本在 cadgen 0.8.1 的 Python 环境中运行（系统 Python 的 OCP 安装不完整）：
+打开 [在线页面](https://wys08hfut.github.io/harmonic_actuator/) 后可：
 
-```bash
-# 重建并导出 STEP / STL / GLB / manifest / 二维剖面
-cadgen +0.8.1 run -m cad.export_assets
+- 拖动底部 **拆解** 滑块，按装配顺序查看 24 个零件。
+- 打开 **剖切**，查看电机、轴承与谐波齿部的内部关系。
+- 打开 **传动**（默认自动运行），观察波发生器把柔轮撑成椭圆、柔轮齿逐个进入刚轮齿槽；可调输入转速与 20–100 连续减速比。
+- 点击 **齿部** 查看轴向齿圈特写，点击 **输出端** 查看输出法兰与交叉滚子轴承。
+- 点击 **结构图** 打开二维轴向剖面，并查看右上角实时齿部放大窗；支持滚轮/双指缩放与拖动。
+- 点击任意零件查看中文讲解卡；按 `Esc` 关闭，按 `R` 复位。
 
-# 几何校核：包络、Ø20 通孔、真实配合零干涉、运动学接触、装配路径、资产节点名
-cadgen +0.8.1 run -m cad.checks
-```
+手机端同样可用：底部单列控制条，折叠式“为什么这样设计”说明，结构图可缩放。
 
-### 产物
+## 主要参数（演示基准）
 
-| 路径 | 说明 |
+| 项目 | 参数 |
 |---|---|
-| `models/harmonic_actuator_v2_assembly.step` | 完整装配（中性零件状态） |
-| `models/harmonic_actuator_v2_cutaway.step` | 180° + 90° 局部窗口剖切 |
-| `models/harmonic_actuator_v2_cutaway.stl` | 剖切三角网格 |
-| `models/harmonic_actuator_v2.glb` | 带节点名/材质的 Web 资产 |
-| `web/public/assets/harmonic_actuator_v2.glb` | Web 实际加载的 GLB |
-| `web/public/assets/harmonic_actuator.json` | 24 个零件的爆炸/旋转/剖切/文案索引 |
-| `drawings/harmonic_actuator_section_teaching.svg` | 客户页二维剖面（齿部安装变形示意 + 活的放大窗底图） |
-| `drawings/harmonic_actuator_section_neutral.svg` | CAD/QA 中性状态剖面 |
-| `web/public/assets/harmonic_actuator_section_teaching.svg` | 面板用剖面副本 |
+| 机身外径 | Ø110 mm |
+| 输出端安装法兰 | Ø118 mm |
+| 总长 | 122 mm |
+| 中心通孔 | Ø20 mm |
+| 谐波齿数 | 柔轮 Zf=100 / 刚轮 Zc=102 |
+| 基准减速比 | 50:1（页面可演示 20–100） |
+| 演示输入转速 | 0–3000 rpm |
+| 输出端轴承 | 交叉滚子轴承 RB7013 |
+| 编码器 | 输入端 14 位 + 输出端 19 位绝对值 |
+| 防护 | 默认 IP40，保留 Ø20 开放通孔 |
 
-### 关键默认值
+> 页面为结构原理演示，传动按 1/20 慢放，性能与尺寸以正式规格书为准。尺寸、减速比、转速等数值仅用于展示工作原理，不构成产品性能承诺。
 
-- 50:1 基准：Zf=100、Zc=102、m=0.5；工作波发生器椭圆 Ø48.05/Ø46.05；中性 CAD 波发生器缩小到 Ø46.65/Ø44.65 以避免圆柔轮静态穿模。
-- 减速比 20–100（0.5 步进），输入端 0–3000 rpm；Web 用 1/20 慢放展示。
-- 双绝对值编码器：输入端 14 位、输出端 19 位；多圈靠电子圈数计数，磁环本身单圈绝对。
-- 防护默认 IP40，保留 Ø20 开放通孔；IP54 需密封电缆接头并放弃开放通孔。
-- 页面性能表述只讲结构原理，并标注“结构原理示意，最终参数以正式规格书为准”。
+## 轴向剖面示意
 
-## 3. Web
+![HA-110 轴向剖面](https://wys08hfut.github.io/harmonic_actuator/assets/harmonic_actuator_section_teaching.svg)
 
-```bash
-cd web
-npm install
-npm run dev       # http://127.0.0.1:5173/
-npm run build
-npm test
-npm run check:visual
-```
+## 说明
 
-页面功能：单屏 3D、拆解滑块、剖切/半透明、传动（自动运行，可调输入转速与减速比）、零件信息卡、二维剖面 + 活齿部放大窗。
-
-## 4. 旧脚本与 v1 资产（legacy）
-
-- `harmonic_actuator_build123d.py`：v1 build123d 模板。存在输出端堆叠反了、`Hole(depth=...)` 双向切进轴承座、编码器 PCB 埋入壳体等问题；仅作参考，不作为交付。
-- `generate_actuator_models.py`：v1 NumPy 网格/蓝图模板。已修复硬编码 `/working_dir` 输出路径，输出改到 `legacy_output/`；手写 STEP 是仅表面的 faceted 文件，已标记弃用，v2 实体 STEP 由 `cad/export_assets.py` 导出。
-- v1 资产（`models/harmonic_actuator_assembly.*`、`models/harmonic_actuator_cutaway.*`、`previews/`、`drawings/harmonic_actuator_cad_blueprint.png`）保留在本地，不进入 v2 主链路。
-
-## 5. 环境说明
-
-- `requirements.txt` 是 v1 的依赖清单；v2 通过 cadgen 自带的 build123d 0.13 环境运行，避免系统 Python 的 `OCP.Standard` 导入错误。
-- `web/` 使用 Vite + TypeScript + Three.js；视觉/交互检查使用本机 Chrome（`puppeteer-core`）。
-- 模型单位 mm，Z 轴为轴向。GLB 是**数值毫米、根节点 Y-up**；manifest 的 `units:"mm"`/`axis:"Z"` 描述模型坐标，并带 `gltf_up:"Y"`/`gltf_units:"mm"`。Web 加载时按 `(x,y,z) → (x,z,-y)` 转换爆炸偏移和程序化齿形。
-- 当前 GLB 约 11.9 MB，高于 6 MB 目标；Web 阶段用 Meshopt/降网格优化，节点名保持不变。
-- v2.1 复核修复：后盖 4×M3 PCD50；柔轮毂 Ø47/Ø32；Ø44 H7/h6 止口；FS 8×M3 从柔轮侧进入、法兰侧攻丝；CRB 内圈由输出法兰 Z92–93 旋转肩台支撑，主体让位 r42；输出止口为 Ø42 H7 凹止口；定子—绕组零干涉；6806 内圈/球通过 manifest `child_groups` 旋转。
+本仓库用于产品展示与在线原理页的自动部署。页面由 GitHub Pages 托管，每次更新自动发布；技术实现与设计资料保存在本地开发环境。

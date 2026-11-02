@@ -10,3 +10,10 @@ models/mesh_assembly.step
 models/mesh_cutaway.stl
 drawings/harmonic_actuator_cad_blueprint.png
 web/dist/
+
+# Public repo is user-facing; technical/process files stay local
+docs/
+web/README.md
+harmonic_actuator_build123d.py
+generate_actuator_models.py
+requirements.txt
