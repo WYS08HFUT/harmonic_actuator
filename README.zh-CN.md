@@ -1,5 +1,7 @@
 # HA-110 谐波关节模组
 
+[English](README.md) | **简体中文**
+
 一体化无框电机、谐波减速器、交叉滚子轴承与双绝对值编码器同轴集成的机器人关节模组。机身外径 Ø110 mm，输出端安装法兰 Ø118 mm，中心留出 Ø20 mm 走线通孔。
 
 **在线体验：https://wys08hfut.github.io/harmonic_actuator/**
